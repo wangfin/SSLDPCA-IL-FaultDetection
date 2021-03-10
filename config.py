@@ -12,16 +12,20 @@ import torch as t
 
 class DefaultConfig(object):
     env = 'default'  # visdom 环境
-    model = 'ResNet'  # 使用的模型，名字必须与models/__init__.py中的名字一致
+    model = 'ResNet34'  # 使用的模型，名字必须与models/__init__.py中的名字一致
+    vis_port = 8097  # visdom 端口
 
-    train_data_root = './data/train/'  # 训练集存放路径
-    test_data_root = './data/test/'  # 测试集存放路径
+    train_data_root = './data/CWRU_DE.h5'  # 训练集存放路径
+    val_data_root = './data/CWRU_DE.h5'  # 测试集存放路径
     load_model_path = None  # 加载预训练的模型的路径，为None代表不加载
 
     CWRU_data = './CWRU_data'  # CWRU的数据列表
-    CWRU_dim = 2048  # CWRU的数据维度
-    CWRU_category = 101  # 总共有101个类别
+    CWRU_data_1d = './CWRU_data_1d'  # CWRU数据1d的保存路径，h5文件
+    CWRU_data_2d = './CWRU_data_2d'  # CWRU数据2d的保存路径
+    CWRU_data_2d_transform = './CWRU_data_2d/transform'  # CWRU数据2d的保存路径
+    CWRU_dim = 400  # CWRU的数据维度
 
+    category = 101  # CWRU总共有101个类别
     train_fraction = 0.8  # 训练集数据的占比
 
     batch_size = 128  # batch size

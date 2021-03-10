@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # @Time    : 2021/3/8 10:31
 # @Author  : wb
-# @File    : BasicModule.py
+# @File    : basic_module.py
 
 '''
 封装了nn.Module，主要提供save和load两个方法

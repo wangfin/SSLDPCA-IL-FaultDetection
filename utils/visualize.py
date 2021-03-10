@@ -12,6 +12,7 @@ class Visualizer(object):
     """
     封装了visdom的基本操作，但是你仍然可以通过`self.vis.function`
     调用原生的visdom接口
+    visdom命令 python -m visdom.server
     """
 
     def __init__(self, env='default', **kwargs):

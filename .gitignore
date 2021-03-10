@@ -1,2 +1,5 @@
 /data/CWRU_data
 /data/*.h5
+/data/CWRU_data_2d/DE
+/data/CWRU_data_2d/FE
+/data/CWRU_data_1d/*.h5

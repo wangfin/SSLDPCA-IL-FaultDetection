@@ -1,15 +1,14 @@
 #!/usr/bin/env python
 # @Time    : 2021/3/8 14:26
 # @Author  : wb
-# @File    : ResNet.py
+# @File    : resnet.py
 
 """
-构建Resnet作为基础的CNN模块，用于故障诊断（分类）
-采用cifar100中的构建的Resnet
+采用cifar100构建的ResNet
 """
 
 import torch.nn as nn
-from .BasicModule import BasicModule
+from .basic_module import BasicModule
 
 class BasicBlock(nn.Module):
     """
@@ -73,7 +72,7 @@ class BottleNeck(nn.Module):
     def forward(self, x):
         return nn.ReLU(inplace=True)(self.residual_function(x) + self.shortcut(x))
 
-class ResNet(nn.Module):
+class ResNet(BasicModule):
 
     def __init__(self, block, num_block, name, num_classes=100):
         super(ResNet, self).__init__()
