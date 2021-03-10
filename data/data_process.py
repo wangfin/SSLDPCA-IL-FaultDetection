@@ -153,56 +153,56 @@ class DataProcess(object):
                     # plt.savefig("GramianAngularField.pdf", pad_inches=0)
                     # plt.show()
 
-    def CWRU_data_2d_transform(self, type='DE'):
-        '''
-        使用数据拼接的方式，将一个长的时序数据拆分成小段，将小段按按行拼接
-        :param type:
-        :return:
-        '''
-        # 数据处理页面
-        # 读取文件列表
-        frame_name = os.path.join(opt.CWRU_data, 'annotations.txt')
-        frame = pd.read_table(frame_name)
-        # 维度
-        dim = opt.CWRU_dim
-        # 保存路径
-        save_path = os.path.join(opt.CWRU_data_2d, type)
-
-        for idx in tqdm(range(1)):
-            # mat文件名
-            mat_name = os.path.join(opt.CWRU_data, frame['file_name'][idx])
-            # 读取mat文件中的原始数据
-            raw_data = scio.loadmat(mat_name)
-            # raw_data.items() X097_DE_time 所以选取5:7为DE的
-            for key, value in raw_data.items():
-                if key[5:7] == type:
-                    # dim个数据点一个划分，计算数据块的数量
-                    sample_num = value.shape[0] // dim
-
-                    # 数据取整
-                    signal = value[0:dim * sample_num]
-                    # 归一化到[-1,1]，生成灰度图
-                    signal = self.normalization(signal)
-                    # 转换成行向量
-                    signal = np.array(signal).reshape(1, -1)
-                    # 按sample_num切分，每一个块dim大小
-                    signals = np.split(signal, sample_num, axis=1)
-
-                    # 生成正方形的图片，正方形面积小，能生成多张图片
-                    pic_num = sample_num // dim
-                    pic_data = []
-                    for i in range(pic_num-1):
-                        pic_data.append(signals[i * dim:(i + 1) * dim])
-
-                        # pic = np.concatenate(pic_data).squeeze()
-
-                        # 展示图片
-                        plt.imshow(pic_data)
-                        plt.show()
-
-    def normalization(self, data):
-        _range = np.max(abs(data))
-        return data / _range
+    # def CWRU_data_2d_transform(self, type='DE'):
+    #     '''
+    #     使用数据拼接的方式，将一个长的时序数据拆分成小段，将小段按按行拼接
+    #     :param type:
+    #     :return:
+    #     '''
+    #     # 数据处理页面
+    #     # 读取文件列表
+    #     frame_name = os.path.join(opt.CWRU_data, 'annotations.txt')
+    #     frame = pd.read_table(frame_name)
+    #     # 维度
+    #     dim = opt.CWRU_dim
+    #     # 保存路径
+    #     save_path = os.path.join(opt.CWRU_data_2d, type)
+    #
+    #     for idx in tqdm(range(1)):
+    #         # mat文件名
+    #         mat_name = os.path.join(opt.CWRU_data, frame['file_name'][idx])
+    #         # 读取mat文件中的原始数据
+    #         raw_data = scio.loadmat(mat_name)
+    #         # raw_data.items() X097_DE_time 所以选取5:7为DE的
+    #         for key, value in raw_data.items():
+    #             if key[5:7] == type:
+    #                 # dim个数据点一个划分，计算数据块的数量
+    #                 sample_num = value.shape[0] // dim
+    #
+    #                 # 数据取整
+    #                 signal = value[0:dim * sample_num]
+    #                 # 归一化到[-1,1]，生成灰度图
+    #                 signal = self.normalization(signal)
+    #                 # 转换成行向量
+    #                 signal = np.array(signal).reshape(1, -1)
+    #                 # 按sample_num切分，每一个块dim大小
+    #                 signals = np.split(signal, sample_num, axis=1)
+    #
+    #                 # 生成正方形的图片，正方形面积小，能生成多张图片
+    #                 pic_num = sample_num // dim
+    #                 pic_data = []
+    #                 for i in range(pic_num-1):
+    #                     pic_data.append(signals[i * dim:(i + 1) * dim])
+    #
+    #                     # pic = np.concatenate(pic_data).squeeze()
+    #
+    #                     # 展示图片
+    #                     plt.imshow(pic_data)
+    #                     plt.show()
+    #
+    # def normalization(self, data):
+    #     _range = np.max(abs(data))
+    #     return data / _range
 
 
 
