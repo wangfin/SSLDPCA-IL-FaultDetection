@@ -4,7 +4,7 @@
 # @File    : main.py
 
 '''
-main文件，用于训练，测试等
+主文件，用于训练，测试等
 '''
 import torch
 from torch.utils.data import DataLoader
@@ -15,7 +15,7 @@ import os
 import models
 from config import opt
 from utils.visualize import Visualizer
-from data.dataset import CWRUDataset
+from data.dataset import CWRUDataset2D
 
 
 def train(**kwargs):
@@ -39,11 +39,12 @@ def train(**kwargs):
     model.to(opt.device)
 
     # step2: 数据
-    train_data = CWRUDataset(opt.train_data_root, train=True)
-    val_data = CWRUDataset(opt.val_data_root, train=False)
+    train_data = CWRUDataset2D(opt.train_data_root, train=True)
+    # 测试数据集和验证数据集是一样的，这些数据是没有用于训练的
+    test_data = CWRUDataset2D(opt.train_data_root, train=False)
 
     train_dataloader = DataLoader(train_data, opt.batch_size, shuffle=True)
-    val_dataloader = DataLoader(val_data, opt.batch_size, shuffle=False)
+    test_dataloader = DataLoader(test_data, opt.batch_size, shuffle=False)
 
     # step3: 目标函数和优化器
     # 损失函数，交叉熵
@@ -95,7 +96,7 @@ def train(**kwargs):
         model.save()
 
         # 计算测试集上的指标和可视化
-        val_cm, val_accuracy = val(model, val_dataloader)
+        val_cm, val_accuracy = val(model, test_dataloader)
 
         vis.plot('val_accuracy', val_accuracy)
         vis.log("epoch:{epoch},lr:{lr},loss:{loss},train_cm:{train_cm},val_cm:{val_cm}".format(
@@ -115,11 +116,12 @@ def val(model, dataloader):
     """
     计算模型在验证集上的准确率等信息
     """
+    # pytorch会自动把BN和DropOut固定住，不会取平均，而是用训练好的值
     model.eval()
     confusion_matrix = meter.ConfusionMeter(opt.category)
-    for ii, (val_input, label) in tqdm(enumerate(dataloader)):
-        val_input = val_input.to(opt.device)
-        score = model(val_input)
+    for ii, (test_input, label) in tqdm(enumerate(dataloader)):
+        test_input = test_input.to(opt.device)
+        score = model(test_input)
         confusion_matrix.add(score.detach().squeeze(), label.type(torch.LongTensor))
 
     model.train()
@@ -127,6 +129,39 @@ def val(model, dataloader):
     accuracy = 100. * (cm_value[0][0] + cm_value[1][1]) / (cm_value.sum())
     return confusion_matrix, accuracy
 
+
+def test(**kwargs):
+    opt._parse(kwargs)
+
+    # 构建模型
+    model = getattr(models, opt.model)().eval()
+    if opt.load_model_path:
+        model.load(opt.load_model_path)
+    model.to(opt.device)
+
+    # data
+    train_data = CWRUDataset2D(opt.train_data_root, test=True)
+    test_dataloader = DataLoader(train_data, batch_size=opt.batch_size, shuffle=False, num_workers=opt.num_workers)
+    results = []
+    for ii, (data, path) in tqdm(enumerate(test_dataloader)):
+        input = data.to(opt.device)
+        score = model(input)
+        probability = torch.nn.functional.softmax(score, dim=1)[:, 0].detach().tolist()
+        # label = score.max(dim = 1)[1].detach().tolist()
+
+        batch_results = [(path_.item(), probability_) for path_, probability_ in zip(path, probability)]
+
+        results += batch_results
+    write_csv(results, opt.result_file)
+
+    return results
+
+def write_csv(results, file_name):
+    import csv
+    with open(file_name, 'w') as f:
+        writer = csv.writer(f)
+        writer.writerow(['id', 'label'])
+        writer.writerows(results)
 
 def help():
     """

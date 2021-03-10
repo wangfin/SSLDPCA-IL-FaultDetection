@@ -15,8 +15,7 @@ class DefaultConfig(object):
     model = 'ResNet34'  # 使用的模型，名字必须与models/__init__.py中的名字一致
     vis_port = 8097  # visdom 端口
 
-    train_data_root = './data/CWRU_DE.h5'  # 训练集存放路径
-    val_data_root = './data/CWRU_DE.h5'  # 测试集存放路径
+    train_data_root = './data/CWRU_data_2d/DE/gadf'  # 训练集存放路径，测试集从训练集中划出来
     load_model_path = None  # 加载预训练的模型的路径，为None代表不加载
 
     CWRU_data = './CWRU_data'  # CWRU的数据列表
@@ -28,13 +27,13 @@ class DefaultConfig(object):
     category = 101  # CWRU总共有101个类别
     train_fraction = 0.8  # 训练集数据的占比
 
-    batch_size = 128  # batch size
+    batch_size = 64  # batch size
     use_gpu = True  # user GPU or not
     num_workers = 4  # how many workers for loading data
     print_freq = 1  # print info every N batch
 
     debug_file = './tmp/debug'  # if os.path.exists(debug_file): enter ipdb
-    result_file = './results/result.csv'
+    result_file = './result/result.csv'
 
     max_epoch = 10
     lr = 0.1  # initial learning rate
