@@ -48,7 +48,7 @@ class CWRUDataset(data.Dataset):
 
 class CWRUDataset2D(data.Dataset):
 
-    def __init__(self, root, train=True, test=False):
+    def __init__(self, root, train=True):
         '''
         获取所有图片的地址，并根据训练，测试划分数据（就不搞验证集了）
         :param root: 图片目录
@@ -69,7 +69,7 @@ class CWRUDataset2D(data.Dataset):
         # 训练数据集
         if train:
             self.imgs = imgs[:int(self.train_fraction * imgs_num)]
-        elif test:
+        else:
             self.imgs = imgs[int(self.train_fraction * imgs_num):]
 
         self.transforms = T.Compose([T.ToTensor()])

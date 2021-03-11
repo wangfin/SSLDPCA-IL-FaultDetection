@@ -40,6 +40,8 @@ class DefaultConfig(object):
     lr_decay = 0.95  # when val_loss increase, lr = lr*lr_decay
     weight_decay = 1e-4  # 损失函数
 
+    # 下面是半监督的部分参数
+    label_fraction = 0.2  # 选取有标签样本的占比
 
     def parse(self, kwargs):
         '''

@@ -36,6 +36,9 @@ def train(**kwargs):
     # 是否读取保存好的模型参数
     if opt.load_model_path:
         model.load(opt.load_model_path)
+
+    # 设置GPU
+    os.environ["CUDA_VISIBLE_DEVICES"] = "2"
     model.to(opt.device)
 
     # step2: 数据
