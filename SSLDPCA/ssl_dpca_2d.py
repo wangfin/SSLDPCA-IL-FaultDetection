@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # @Time    : 2021/3/9 19:25
 # @Author  : wb
-# @File    : ssl_dpca.py
+# @File    : ssl_dpca_2d.py
 import os
 import random
 import numpy as np
@@ -14,10 +14,10 @@ import h5py
 from config import opt
 
 '''
-半监督（SSL）的密度峰值聚类（DPCA）
+半监督（SSL）的密度峰值聚类（DPCA），此文件用于2d数据
 '''
 
-class SslDpca(object):
+class SslDpca2D(object):
     '''
     半监督的DPCA，在原始的DPCA的基础上加入半监督（小部分有标签数据）
     步骤：
@@ -191,7 +191,7 @@ class SslDpca(object):
 
 if __name__ == '__main__':
     root = os.path.join('../', opt.train_data_root)
-    ssldpca = SslDpca(root)
+    ssldpca = SslDpca2D(root)
     node_K_neighbor = ssldpca.build_distance_all()
     print(node_K_neighbor)
 

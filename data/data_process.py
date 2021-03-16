@@ -64,16 +64,17 @@ class DataProcess(object):
             # raw_data.items() X097_DE_time 所以选取5:7为DE的
             for key, value in raw_data.items():
                 if key[5:7] == type:
-                    signal = value
-                    # print(signal.shape)
-                    sample_num = signal.shape[0] // dim
+                    # 以dim的长度划分，有多少个数据块
+                    sample_num = value.shape[0] // dim
                     # print('sample_num', sample_num)
 
-                    # 这边是将一维向量转换成[signal.shape[0]//dim,dim]的数组
+                    # 训练数据的长度=总数据块树*训练数据的占比
                     train_num = int(sample_num * train_fraction)
+                    # 测试数据的长度=总长度-训练数据
                     test_num = sample_num - train_num
 
-                    signal = signal[0:dim * sample_num]
+                    # 数据取整，把列向量转换成行向量
+                    signal = value[0:dim * sample_num]
                     # 按sample_num切分
                     signals = np.array(np.split(signal, sample_num))
                     # print('signals', signals.shape)
@@ -132,7 +133,7 @@ class DataProcess(object):
 
         for idx in tqdm(range(len(frame))):
             # mat文件名
-            mat_name = os.path.join(opt.CWRU_data, frame['file_name'][idx])
+            mat_name = os.path.join(CWRU_data_path, frame['file_name'][idx])
             # 读取mat文件中的原始数据
             raw_data = scio.loadmat(mat_name)
             # raw_data.items() X097_DE_time 所以选取5:7为DE的
@@ -148,7 +149,7 @@ class DataProcess(object):
                     # paa_signal = paa.fit_transform(signal)
 
                     # 按sample_num切分，每个dim大小
-                    signals = np.array(np.split(signal, sample_num))
+                    signals = np.split(signal, sample_num, axis=1)
 
                     for i in tqdm(range(len(signals))):
                         # 将每个dim的数据转换为2d图像
@@ -199,14 +200,14 @@ class DataProcess(object):
         if not os.path.exists(save_path):
             os.makedirs(save_path)
 
-        # 转换文件目录
+        # 转换生成的图像文件目录
         transform_path = os.path.join(save_path, 'transform')
         if not os.path.exists(transform_path):
             os.makedirs(transform_path)
 
         for idx in tqdm(range(len(frame))):
             # mat文件名
-            mat_name = os.path.join(opt.CWRU_data, frame['file_name'][idx])
+            mat_name = os.path.join(CWRU_data_path, frame['file_name'][idx])
             # 读取mat文件中的原始数据
             raw_data = scio.loadmat(mat_name)
             # raw_data.items() X097_DE_time 所以选取5:7为DE的

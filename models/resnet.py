@@ -5,6 +5,7 @@
 
 """
 采用cifar100构建的ResNet
+这个暂时没有用到
 """
 
 import torch.nn as nn

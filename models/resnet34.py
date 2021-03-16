@@ -3,14 +3,15 @@
 # @Author  : wb
 # @File    : resnet34.py
 
-'''
-构建Resnet作为基础的CNN模块，用于故障诊断（分类）
-使用resnet34
-'''
-
 from .basic_module import BasicModule
 from torch import nn
 from torch.nn import functional as F
+
+'''
+构建Resnet作为基础的CNN模块，用于处理2D的数据信号
+可以用于构建基础的故障诊断（分类）模块
+使用resnet34
+'''
 
 class ResidualBlock(nn.Module):
     """
