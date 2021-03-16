@@ -18,13 +18,13 @@ class DefaultConfig(object):
     train_data_root = './data/CWRU_data_2d/DE/gadf'  # 训练集存放路径，测试集从训练集中划出来
     load_model_path = None  # 加载预训练的模型的路径，为None代表不加载
 
-    CWRU_data = './CWRU_data'  # CWRU的数据列表
-    CWRU_data_1d = './CWRU_data_1d'  # CWRU数据1d的保存路径，h5文件
-    CWRU_data_2d = './CWRU_data_2d'  # CWRU数据2d的保存路径
-    CWRU_data_2d_transform = './CWRU_data_2d/transform'  # CWRU数据2d的保存路径
-    CWRU_dim = 400  # CWRU的数据维度
+    CWRU_data_root = './CWRU_data'  # CWRU的数据列表
+    CWRU_data_1d_root = './CWRU_data_1d'  # CWRU数据1d的保存路径，h5文件
+    CWRU_data_2d_root = './CWRU_data_2d'  # CWRU数据2d的根目录保存路径
 
-    category = 101  # CWRU总共有101个类别
+    CWRU_dim = 400  # CWRU的数据维度
+    Cwru_category = 101  # CWRU总共有101个类别
+
     train_fraction = 0.8  # 训练集数据的占比
 
     batch_size = 64  # batch size
@@ -42,6 +42,7 @@ class DefaultConfig(object):
 
     # 下面是半监督的部分参数
     label_fraction = 0.2  # 选取有标签样本的占比
+    K = 50  # KNN的K值
 
     def parse(self, kwargs):
         '''

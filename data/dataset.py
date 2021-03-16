@@ -15,7 +15,7 @@ import torch.utils.data as data
 
 from config import opt
 
-class CWRUDataset(data.Dataset):
+class CWRUDataset1D(data.Dataset):
 
     def __init__(self, filename, train=True):
         '''
