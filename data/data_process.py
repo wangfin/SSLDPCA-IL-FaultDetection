@@ -47,17 +47,18 @@ class DataProcess(object):
         CWRU_data_path = opt.CWRU_data_root
         # 一维数据保存路径
         save_path = opt.CWRU_data_1d_root
-        # 训练样本80%
-        train_fraction = opt.train_fraction
 
         # 读取文件列表
         frame_name = os.path.join(CWRU_data_path, 'annotations.txt')
         frame = pd.read_table(frame_name)
 
-        signals_tr = []
-        labels_tr = []
-        signals_te = []
-        labels_te = []
+        # 数据
+        signals = []
+        # 标签
+        labels = []
+        # 数据块数量
+        data_num = []
+
         for idx in range(len(frame)):
             mat_name = os.path.join(CWRU_data_path, frame['file_name'][idx])
             raw_data = scio.loadmat(mat_name)
@@ -68,35 +69,37 @@ class DataProcess(object):
                     sample_num = value.shape[0] // dim
                     # print('sample_num', sample_num)
 
-                    # 训练数据的长度=总数据块树*训练数据的占比
-                    train_num = int(sample_num * train_fraction)
-                    # 测试数据的长度=总长度-训练数据
-                    test_num = sample_num - train_num
-
-                    # 数据取整，把列向量转换成行向量
-                    signal = value[0:dim * sample_num]
-                    # 按sample_num切分
-                    signals = np.array(np.split(signal, sample_num))
+                    # 数据取整
+                    signal = value[0:dim * sample_num].reshape(1, -1)
                     # print('signals', signals.shape)
+                    # 把数据分割成sample_num个数据块，(609,400,1)
+                    signal_split = np.array(np.split(signal, sample_num, axis=1))
 
-                    signals_tr.append(signals[0:train_num, :])
-                    signals_te.append(signals[train_num:sample_num, :])
-                    labels_tr.append(idx * np.ones(train_num))
-                    labels_te.append(idx * np.ones(test_num))
+                    # 保存行向量
+                    signals.append(signal_split)
+                    # (123,)一维的label
+                    labels.append(idx * np.ones(sample_num))
+                    # 保存每个类别数据块的数量
+                    data_num.append(sample_num)
 
-        signals_tr_np = np.concatenate(signals_tr).squeeze()  # 纵向的拼接，删除维度为1的维度
-        labels_tr_np = np.concatenate(np.array(labels_tr)).astype('uint8')
-        signals_te_np = np.concatenate(signals_te).squeeze()
-        labels_te_np = np.concatenate(np.array(labels_te)).astype('uint8')
-        print(signals_tr_np.shape, labels_tr_np.shape, signals_te_np.shape, labels_te_np.shape)
+        # squeeze删除维度为1的维度，(1,123)->(123,)
+        # axis=0为纵向的拼接，axis=1为纵向的拼接
+        # (13477200,)
+        signals_np = np.concatenate(signals).squeeze()
+        # (33693,)
+        labels_np = np.concatenate(np.array(labels)).astype('uint8')
+        data_num_np = np.array(data_num).astype('uint16')
+        print(signals_np.shape, labels_np.shape, data_num_np.shape)
 
         # 保存为h5的文件
         file_name = os.path.join(save_path, 'CWRU_' + type + '.h5')
         f = h5py.File(file_name, 'w')
-        f.create_dataset('X_train', data=signals_tr_np)
-        f.create_dataset('y_train', data=labels_tr_np)
-        f.create_dataset('X_test', data=signals_te_np)
-        f.create_dataset('y_test', data=labels_te_np)
+        # 数据
+        f.create_dataset('data', data=signals_np)
+        # 标签
+        f.create_dataset('label', data=labels_np)
+        # 每个类别的数据块数量
+        f.create_dataset('data_num', data=data_num_np)
         f.close()
 
     def CWRU_data_2d_gaf(self, type='DE'):
@@ -280,9 +283,10 @@ class DataProcess(object):
 
 if __name__ == '__main__':
     data = DataProcess()
-    data.CWRU_data_2d_gaf()
+    data.CWRU_data_1d(type='FE')
 
-
+    # DE(33693, 400) (33693,)
+    # FE(33693, 400) (33693,)
 
 
 

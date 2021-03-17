@@ -23,7 +23,7 @@ class DefaultConfig(object):
     CWRU_data_2d_root = './CWRU_data_2d'  # CWRU数据2d的根目录保存路径
 
     CWRU_dim = 400  # CWRU的数据维度
-    Cwru_category = 101  # CWRU总共有101个类别
+    CWRU_category = 101  # CWRU总共有101个类别
 
     train_fraction = 0.8  # 训练集数据的占比
 

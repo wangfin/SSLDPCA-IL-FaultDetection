@@ -42,7 +42,7 @@ class SslDpca2D(object):
         # 有标签数据的占比
         self.label_fraction = opt.label_fraction
         # 故障的类别
-        self.category = opt.category
+        self.category = opt.CWRU_category
         # 邻居数量
         self.neighbor = opt.K
         # 全部的图片的ID
