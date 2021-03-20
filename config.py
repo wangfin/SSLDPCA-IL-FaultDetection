@@ -42,7 +42,7 @@ class DefaultConfig(object):
 
     # 下面是半监督的部分参数
     label_fraction = 0.2  # 选取有标签样本的占比
-    K = 50  # KNN的K值
+    K = 11  # KNN的K值
 
     def parse(self, kwargs):
         '''

@@ -80,14 +80,14 @@ class SslDpca2D(object):
 
     def local_density(self):
         '''
-        计算节点的密度
+        计算数据点的密度
         :return:
         '''
         share_neighbor = []
 
     def build_distance(self):
         '''
-        根据图片之间的相互距离，选出每个节点的K邻居列表，计算出K邻居平均距离
+        根据图片之间的相互距离，选出每个数据点的K邻居列表，计算出K邻居平均距离
         :return:
         '''
         node_K_neighbor = []
@@ -97,9 +97,9 @@ class SslDpca2D(object):
         for node_i_path, node_j_path in img_iter_path:
             node_i = Image.open(node_i_path)
             node_j = Image.open(node_j_path)
-            # 两个节点之间的距离
+            # 两个数据点之间的距离
             distance = self.euclidean_distance(node_i, node_j)
-        # 记录每个节点与其他节点的距离
+        # 记录每个数据点与其他数据点的距离
 
         # 从中选出最近的K个，就是K邻居
 
@@ -112,7 +112,7 @@ class SslDpca2D(object):
         上面那个函数主要是进行了组合，减少了需要计算的数量，增加了工作量
         但是据观察发现，其实大部分的时间都是花费在了读取图片的工作上，所以这个是全部读取的函数
 
-        根据图片之间的相互距离，选出每个节点的K邻居列表，计算出K邻居平均距离
+        根据图片之间的相互距离，选出每个数据点的K邻居列表，计算出K邻居平均距离
         :return:
         '''
 
@@ -121,7 +121,7 @@ class SslDpca2D(object):
 
         # 所有的图片
         imgs = []
-        # 节点的K邻居的路径
+        # 数据点的K邻居的路径
         node_K_neighbor_path = []
         for path in tqdm(self.imgs_path):
             img = Image.open(path)
@@ -131,7 +131,7 @@ class SslDpca2D(object):
         # <PIL.PngImagePlugin.PngImageFile image mode=RGBA size=400x400 at 0x1AD882E8160>
         # 开始计算
         for node_i in tqdm(imgs):
-            # 节点间的距离合集
+            # 数据点间的距离合集
             node_distance = np.empty(len(self.imgs_path))
             for node_j in imgs:
                 # 计算两个图像之间的距离
@@ -144,7 +144,7 @@ class SslDpca2D(object):
             neighbor = order_node_distance[:self.neighbor]
             # 邻居的路径
             neighbor_path = []
-            # 保存所有节点邻居的K邻居
+            # 保存所有数据点邻居的K邻居
             for nei in neighbor:
                 neighbor_path.append(self.imgs_path[nei])
                 node_K_neighbor_path.append(neighbor_path)
@@ -164,7 +164,7 @@ class SslDpca2D(object):
 
     def euclidean_distance(self, node_i, node_j):
         '''
-        计算两个节点之间的欧几里得距离
+        计算两个数据点之间的欧几里得距离
         :param node_i: 输入图片的image对象
         :param node_j: 输入图片
         :return: distance，距离
