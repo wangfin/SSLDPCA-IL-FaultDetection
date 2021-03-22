@@ -12,6 +12,7 @@ import numpy as np
 from tslearn import neighbors
 from tslearn.utils import to_time_series_dataset
 from scipy.spatial.distance import pdist
+from collections import Counter
 
 from config import opt
 
@@ -59,12 +60,14 @@ class SslDpca1D(object):
         self.label_fraction = opt.label_fraction
         # 故障的类别
         self.category = opt.CWRU_category
-        # 邻居数量
-        self.neighbor_num = opt.K
+        # 邻居数量，因为计算的K邻居的第一个是自己，所以需要+1
+        self.neighbor_num = opt.K + 1
         # 数据的维度
         self.dim = opt.CWRU_dim
         # K邻居模型保存路径
         self.K_neighbor = './K-neighbor.h5'
+        # 间隔超参数
+        self.lambda_delta = opt.lambda_delta
 
     def label_data(self):
         '''
@@ -285,14 +288,11 @@ class SslDpca1D(object):
         scores = []
         max_rho = np.max(density)
         max_delta = np.max(interval)
-        # 判断下密度与间隔是不是登场的
-        if len(density) == len(interval):
-            for i in range(len(density)):
-                # 每个数据点的得分计算
-                score = (density[i] / max_rho) * (interval[i] / max_delta)
-                scores.append(score)
-        else:
-            print('密度和间隔不等长')
+
+        for rho, delta in zip(density, interval):
+            # 每个数据点的得分计算
+            score = (rho / max_rho) * (delta / max_delta)
+            scores.append(score)
 
         return scores
 
@@ -308,15 +308,125 @@ class SslDpca1D(object):
 
         return heads
 
-    def assign_labels(self, density, interval, scores):
+    def divide_area(self, density, interval):
         '''
         为所有的无标签样本点分配标签
-        :return:
+        :return:areas [core_region, border_region, new_category_area]
         '''
         # 1.在rho和delta的决策图中划分区域
         # 2.把所有的无标签点分配到这些区域
         # 3.按照第6点分配标签
 
+        # 三个区域
+        areas = []
+
+        # 密度的分割线，平均密度
+        rho_split_line = np.mean(density)
+        # 间隔的分割线，lambda*间隔的方差
+        delta_split_line = self.lambda_delta * np.var(interval)
+
+        # 根据分割线划分区域
+        # 核心区域
+        core_region = []
+        # 边缘区域
+        border_region = []
+        # 新类别区域
+        new_category_area = []
+        # 数据ID
+        index = 0
+        for rho, delta in zip(density, interval):
+
+            if rho >= rho_split_line:
+                core_region.append(index)
+            elif rho < rho_split_line and delta < delta_split_line:
+                border_region.append(index)
+            elif rho < rho_split_line and delta >= delta_split_line:
+                new_category_area.append(index)
+            else:
+                print('没这种数据')
+
+            index = index + 1
+
+        areas = [core_region, border_region, new_category_area]
+        return areas
+
+    def assign_labels(self, areas, heads, label_datas):
+        '''
+        在划分完区域之后，开始对每个区域内的数据进行分配伪标签
+        :param areas:
+        :param heads:
+        :param label_datas:
+        :return:pseudo_labels
+        '''
+        # 输出的伪标签
+        pseudo_labels = []
+
+        # 核心区域
+        core_region = areas[0]
+        # 边缘区域
+        border_region = areas[1]
+        # 新类别区域
+        new_category_area = areas[2]
+
+        # 簇中心点的标签
+        heads_labels = []
+        # 簇中心点分配标签的过程
+        for head_node in heads:
+            # 计算数据点node到有标签样本的平均距离，然后取最小的平均类别距离
+            label_dis = []
+            # 每个类别的有标签样本
+            for category in label_datas:
+                category_dis = []
+                for i in range(len(category)):
+                    # 两点间的距离
+                    dis = self.euclidean_distance(self.data[head_node], category[i])
+                    category_dis.append(dis)
+                # 每个类别的平均距离
+                label_dis.append(np.mean(category_dis))
+            # 最近的类别
+            min_label = np.argmin(label_dis)
+            heads_labels.append(min_label)
+
+        # 核心区域的标签分配
+        core_labels = []
+        for core_node in core_region:
+            head_dis = []
+            for head_node in heads:
+                # 核心区域中的点与簇中心点的距离
+                dis = self.euclidean_distance(self.data[core_node], self.data[head_node])
+                head_dis.append(dis)
+            # 核心区域点的标签值与最近的簇中心点保持一致
+            core_label = heads_labels[int(np.argmin(head_dis))]
+            core_labels.append(core_label)
+
+        # 边缘区域的标签分配
+        border_labels = []
+        for border_node in border_region:
+            # 计算距离
+            border_node_dis = []
+            for core_node in core_region:
+                # 边缘区域中的点与核心区域内点的距离
+                dis = self.euclidean_distance(self.data[border_node], self.data[core_node])
+                border_node_dis.append(dis)
+            # 保存K邻居的标签值
+            K_labels = []
+            for i in np.argmax(border_node_dis)[:self.K_neighbor]:
+                K_labels.append(core_labels[i])
+
+            # 这里是dict，Counter({3: 2, 10: 2, 1: 1, 0: 1})
+            max_K_labels = Counter(K_labels)
+            # 按value对dict排序，逆序排序
+            max_K_labels = sorted(max_K_labels.items(), key=lambda item: item[1], reverse=True)
+            # max_K_labels[0]为最大值，max_K_labels[0][0]为最大值的key
+            border_labels.append(max_K_labels[0][0])
+
+        # 新类别区域的标签分配
+
+
+
+    def new_category_label(self):
+        
+        return
 
 
 
