@@ -23,7 +23,7 @@ class DefaultConfig(object):
     CWRU_data_2d_root = './CWRU_data_2d'  # CWRU数据2d的根目录保存路径
 
     CWRU_dim = 400  # CWRU的数据维度
-    CWRU_category = 101  # CWRU总共有101个类别
+    CWRU_category = 6  # CWRU总共有101个类别
 
     train_fraction = 0.8  # 训练集数据的占比
 
@@ -43,7 +43,7 @@ class DefaultConfig(object):
     # 下面是半监督的部分参数
     label_fraction = 0.2  # 选取有标签样本的占比
     K = 10  # KNN的K值
-    lambda_delta = 0.1  # 间隔的参数
+    lambda_delta = 0.6  # 间隔的参数
 
     def parse(self, kwargs):
         '''

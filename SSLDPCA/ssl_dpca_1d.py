@@ -4,7 +4,6 @@
 # @File    : ssl_dpca_1d.py
 import datetime
 import os
-
 import h5py
 from tqdm import tqdm
 import random
@@ -15,6 +14,7 @@ from scipy.spatial.distance import pdist
 from collections import Counter
 
 from config import opt
+from SSLDPCA.plot import Plot
 
 '''
 半监督（SSL）的密度峰值聚类（DPCA），此文件用于1d数据
@@ -34,7 +34,7 @@ class SslDpca1D(object):
            6.2 核心区域中的主干点分配给距离最近的簇中心点，并且主干点的标签与所属簇中心点的标签保持一致
            6.3 边缘区域内的边缘点选择与它距离最近K个主干点的标签值，K是人为设定值
            6.4 新类别的样本数据点需要人为标注一部分的标签，然后使用Kmeans聚类传递标签
-       7.输出所有的数据（大量伪标签，少量真实标签）
+       7.调整数据格式，输出所有的数据（大量伪标签，少量真实标签）
        density distance
     '''
 
@@ -44,7 +44,7 @@ class SslDpca1D(object):
         ../data/CWRU_data_1d/CWRU_DE.h5
         '''
         # h5文件路径
-        file_path = '../data/CWRU_data_1d/CWRU_DE.h5'
+        file_path = '../data/CWRU_data_1d/CWRU_mini_DE.h5'
         # 读取数据
         f = h5py.File(file_path, 'r')
         # 数据，取值，可以用f['data'].value，不过包自己推荐使用f['data'][()]这种方式
@@ -65,7 +65,7 @@ class SslDpca1D(object):
         # 数据的维度
         self.dim = opt.CWRU_dim
         # K邻居模型保存路径
-        self.K_neighbor = './K-neighbor.h5'
+        self.K_neighbor = './K-neighbor_mini.h5'
         # 间隔超参数
         self.lambda_delta = opt.lambda_delta
 
@@ -115,7 +115,7 @@ class SslDpca1D(object):
                                                    n_jobs=-1)
         knn_model.fit(train_time_series)
         if not os.path.exists(self.K_neighbor):
-            knn_model.to_hdf5('./K-neighbor.h5')
+            knn_model.to_hdf5(self.K_neighbor)
 
         return knn_model
 
@@ -134,12 +134,12 @@ class SslDpca1D(object):
         if os.path.exists(self.K_neighbor):
             knn_model = knn_model.from_hdf5(self.K_neighbor)
             # 还是需要数据拟合一下
-            knn_model.fit(self.data[:100])
+            knn_model.fit(self.data)
         else:
             # 没有保存模型那就去模型函数那边训练模型
             knn_model = self.neighbors_model()
         # 需要计算邻居的数据
-        test_time_series = to_time_series_dataset(self.data[:100])
+        test_time_series = to_time_series_dataset(self.data)
         # K邻居的距离和邻居的id
         distance, neighbors_index = knn_model.kneighbors(test_time_series, return_distance=True)
 
@@ -285,6 +285,8 @@ class SslDpca1D(object):
         :return: scores [] 数据点的分数
         '''
 
+        starttime = datetime.datetime.now()
+
         scores = []
         max_rho = np.max(density)
         max_delta = np.max(interval)
@@ -294,6 +296,9 @@ class SslDpca1D(object):
             score = (rho / max_rho) * (delta / max_delta)
             scores.append(score)
 
+        endtime = datetime.datetime.now()
+        print('计算得分用时', (endtime - starttime).seconds)
+
         return scores
 
     def select_head(self, scores):
@@ -302,9 +307,15 @@ class SslDpca1D(object):
         :param scores: 数据点分数
         :return: 簇节点的ID heads []
         '''
-        score_index = np.argmax(scores)
+        starttime = datetime.datetime.now()
+
+        # 降序排序，需要选取分数最大的作为簇头
+        score_index = np.argsort(-np.array(scores))
         # 有多少个故障类别，就有多少个簇头
         heads = score_index[:self.category]
+
+        endtime = datetime.datetime.now()
+        print('计算簇头用时', (endtime - starttime).seconds)
 
         return heads
 
@@ -315,10 +326,9 @@ class SslDpca1D(object):
         '''
         # 1.在rho和delta的决策图中划分区域
         # 2.把所有的无标签点分配到这些区域
-        # 3.按照第6点分配标签
+        # 3.输出每个区域内的数据点ID
 
-        # 三个区域
-        areas = []
+        starttime = datetime.datetime.now()
 
         # 密度的分割线，平均密度
         rho_split_line = np.mean(density)
@@ -347,26 +357,31 @@ class SslDpca1D(object):
 
             index = index + 1
 
+        # 最后输出的三个区域的值
         areas = [core_region, border_region, new_category_area]
+
+        endtime = datetime.datetime.now()
+        print('划分区域用时', (endtime - starttime).seconds)
+
         return areas
 
     def assign_labels(self, areas, heads, label_datas):
         '''
         在划分完区域之后，开始对每个区域内的数据进行分配伪标签
-        :param areas:
-        :param heads:
-        :param label_datas:
-        :return:pseudo_labels
+        :param areas: 每个区域内的数据点ID
+        :param heads: 簇头的ID
+        :param label_datas: 有标签的数据ID
+        :return:pseudo_labels 输出的伪标签
         '''
-        # 输出的伪标签
-        pseudo_labels = []
+
+        starttime = datetime.datetime.now()
 
         # 核心区域
         core_region = areas[0]
         # 边缘区域
         border_region = areas[1]
         # 新类别区域
-        new_category_area = areas[2]
+        new_category_region = areas[2]
 
         # 簇中心点的标签
         heads_labels = []
@@ -410,7 +425,8 @@ class SslDpca1D(object):
                 border_node_dis.append(dis)
             # 保存K邻居的标签值
             K_labels = []
-            for i in np.argmax(border_node_dis)[:self.K_neighbor]:
+            # 找到距离边缘点最近的核心点
+            for i in np.argsort(border_node_dis)[:self.K_neighbor]:
                 K_labels.append(core_labels[i])
 
             # 这里是dict，Counter({3: 2, 10: 2, 1: 1, 0: 1})
@@ -421,14 +437,44 @@ class SslDpca1D(object):
             border_labels.append(max_K_labels[0][0])
 
         # 新类别区域的标签分配
+        # new_category_labels = []
+        new_category_labels = self.new_category_label(new_category_region)
+
+        # 最后需要把标签按顺序摆好，然后输出
+        pseudo_labels = []
+        # 把几个list合并一下
+        data_index = heads + core_region + border_region + new_category_region
+        data_labels = heads_labels + core_labels + border_labels + new_category_labels
+        # 设置一个dict
+        pseudo_labels_dict = {}
+        for i in range(len(data_index)):
+            # 给这个dict赋值
+            pseudo_labels_dict[heads[i]] = data_labels[i]
+
+        # 然后将dict按key排序，也就是回到从1-n的原序状态
+        # 然后就可以把dict中的value输入到pseudo_labels
+        for key, value in sorted(pseudo_labels_dict.items()):
+            pseudo_labels.append(value)
+
+        endtime = datetime.datetime.now()
+        print('分配标签用时', (endtime - starttime).seconds)
+
+        return pseudo_labels
 
 
+    def new_category_label(self, new_category_area):
+        '''
+        对新类别区域的数据样本点分配标签
+        :param new_category_area: 新类别区域的数据
+        :return: new_category_labels 新类别区域中样本点的标签
+        '''
 
-    def new_category_label(self):
-        
-        return
+        # 这边全部定的是-1
+        # 长度就是new_category_area的长度
+        new_category_labels = [-1 for _ in range(len(new_category_area))]
 
-
+        return new_category_labels
+    
 
 if __name__ == '__main__':
     ssldpca = SslDpca1D()
@@ -438,11 +484,22 @@ if __name__ == '__main__':
     distance, neighbors_index = ssldpca.neighbors()
     density = ssldpca.build_density(distance, neighbors_index)
     interval = ssldpca.build_interval(density, distance, label_datas)
-    print(density)
-    print(interval)
-
+    # print(density)
+    # print(interval)
+    #
     scores = ssldpca.score(density, interval)
-    print(scores)
+    heads = ssldpca.select_head(scores)
+    #
+    areas = ssldpca.divide_area(density, interval)
+    # print(areas)
+    #
+    # pseudo_labels = ssldpca.assign_labels(areas, heads, label_datas)
+    # print(pseudo_labels)
+
+    plot = Plot()
+    # plot.plot_data(ssldpca.data, ssldpca.label)
+    plot.plot_areas(ssldpca.data, areas)
+
 
 
 
