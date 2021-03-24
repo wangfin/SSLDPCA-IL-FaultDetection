@@ -312,7 +312,7 @@ class SslDpca1D(object):
         # 降序排序，需要选取分数最大的作为簇头
         score_index = np.argsort(-np.array(scores))
         # 有多少个故障类别，就有多少个簇头
-        heads = score_index[:self.category]
+        heads = score_index[:self.category].tolist()
 
         endtime = datetime.datetime.now()
         print('计算簇头用时', (endtime - starttime).seconds)
@@ -322,7 +322,7 @@ class SslDpca1D(object):
     def divide_area(self, density, interval):
         '''
         为所有的无标签样本点分配标签
-        :return:areas [core_region, border_region, new_category_area]
+        :return:areas [[core_region], [border_region], [new_category_area]]
         '''
         # 1.在rho和delta的决策图中划分区域
         # 2.把所有的无标签点分配到这些区域
@@ -365,12 +365,12 @@ class SslDpca1D(object):
 
         return areas
 
-    def assign_labels(self, areas, heads, label_datas):
+    def assign_labels(self, heads, areas, label_datas):
         '''
         在划分完区域之后，开始对每个区域内的数据进行分配伪标签
-        :param areas: 每个区域内的数据点ID
-        :param heads: 簇头的ID
-        :param label_datas: 有标签的数据ID
+        :param heads: 簇头的ID []
+        :param areas: 每个区域内的数据点ID [[], [], []]
+        :param label_datas: 有标签的数据ID [[],[],...,[]]
         :return:pseudo_labels 输出的伪标签
         '''
 
@@ -426,7 +426,7 @@ class SslDpca1D(object):
             # 保存K邻居的标签值
             K_labels = []
             # 找到距离边缘点最近的核心点
-            for i in np.argsort(border_node_dis)[:self.K_neighbor]:
+            for i in np.argsort(border_node_dis)[:opt.K]:
                 K_labels.append(core_labels[i])
 
             # 这里是dict，Counter({3: 2, 10: 2, 1: 1, 0: 1})
@@ -449,7 +449,7 @@ class SslDpca1D(object):
         pseudo_labels_dict = {}
         for i in range(len(data_index)):
             # 给这个dict赋值
-            pseudo_labels_dict[heads[i]] = data_labels[i]
+            pseudo_labels_dict[data_index[i]] = data_labels[i]
 
         # 然后将dict按key排序，也就是回到从1-n的原序状态
         # 然后就可以把dict中的value输入到pseudo_labels
@@ -474,7 +474,7 @@ class SslDpca1D(object):
         new_category_labels = [-1 for _ in range(len(new_category_area))]
 
         return new_category_labels
-    
+
 
 if __name__ == '__main__':
     ssldpca = SslDpca1D()
@@ -493,12 +493,12 @@ if __name__ == '__main__':
     areas = ssldpca.divide_area(density, interval)
     # print(areas)
     #
-    # pseudo_labels = ssldpca.assign_labels(areas, heads, label_datas)
+    pseudo_labels = ssldpca.assign_labels(heads, areas, label_datas)
     # print(pseudo_labels)
 
-    plot = Plot()
-    # plot.plot_data(ssldpca.data, ssldpca.label)
-    plot.plot_areas(ssldpca.data, areas)
+    # plot = Plot()
+    # # plot.plot_data(ssldpca.data, ssldpca.label)
+    # plot.plot_areas(ssldpca.data, areas)
 
 
 
