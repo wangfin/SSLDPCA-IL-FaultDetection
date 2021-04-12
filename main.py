@@ -16,6 +16,8 @@ import models
 from config import opt
 from utils.visualize import Visualizer
 from data.dataset import CWRUDataset2D
+from SSLDPCA.ssl_dpca_1d import ssldpca
+from SSLDPCA.plot import Plot
 
 
 def train(**kwargs):
@@ -165,6 +167,12 @@ def write_csv(results, file_name):
         writer = csv.writer(f)
         writer.writerow(['id', 'label'])
         writer.writerows(results)
+
+def build_pseudo_label():
+    '''
+    构建伪标签
+    :return: 伪标签集合
+    '''
 
 def help():
     """

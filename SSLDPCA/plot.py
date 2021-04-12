@@ -62,12 +62,20 @@ class Plot(object):
         plt.savefig('images/areas.png', dpi=600)
         plt.show()
 
-    def plot_pseudo_labels(self):
+    def plot_pseudo_labels(self, data, true_labels, pseudo_labels):
         '''
-        绘制伪标签示意图
+        绘制伪标签示意图，将原有类别标签与伪标签对比展示
         '''
+        plt.figure(dpi=600)
+        ax1 = plt.subplot(121)
+        ax2 = plt.subplot(122)
+        true_sne = TSNE(n_components=2, random_state=0).fit_transform(data, true_labels)
+        pseudo_sne = TSNE(n_components=2, random_state=0).fit_transform(data, pseudo_labels)
 
+        ax1.scatter(true_sne[:, 0], true_sne[:, 1], c=true_labels, cmap='Spectral', label=true_labels)
+        ax2.scatter(pseudo_sne[:, 0], pseudo_sne[:, 1], c=pseudo_labels, cmap='Spectral', label=pseudo_labels)
 
+        plt.show()
 
 
 

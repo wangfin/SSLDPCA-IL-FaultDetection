@@ -322,7 +322,7 @@ class SslDpca1D(object):
     def divide_area(self, density, interval):
         '''
         为所有的无标签样本点分配标签
-        :return:areas [[core_region], [border_region], [new_category_area]]
+        :return:areas [[core_region], [border_region], [new_category_region]]
         '''
         # 1.在rho和delta的决策图中划分区域
         # 2.把所有的无标签点分配到这些区域
@@ -341,7 +341,7 @@ class SslDpca1D(object):
         # 边缘区域
         border_region = []
         # 新类别区域
-        new_category_area = []
+        new_category_region = []
         # 数据ID
         index = 0
         for rho, delta in zip(density, interval):
@@ -351,14 +351,14 @@ class SslDpca1D(object):
             elif rho < rho_split_line and delta < delta_split_line:
                 border_region.append(index)
             elif rho < rho_split_line and delta >= delta_split_line:
-                new_category_area.append(index)
+                new_category_region.append(index)
             else:
                 print('没这种数据')
 
             index = index + 1
 
         # 最后输出的三个区域的值
-        areas = [core_region, border_region, new_category_area]
+        areas = [core_region, border_region, new_category_region]
 
         endtime = datetime.datetime.now()
         print('划分区域用时', (endtime - starttime).seconds)
@@ -496,9 +496,10 @@ if __name__ == '__main__':
     pseudo_labels = ssldpca.assign_labels(heads, areas, label_datas)
     # print(pseudo_labels)
 
-    # plot = Plot()
-    # # plot.plot_data(ssldpca.data, ssldpca.label)
-    # plot.plot_areas(ssldpca.data, areas)
+    plot = Plot()
+    # plot.plot_data(ssldpca.data, ssldpca.label)
+    plot.plot_areas(ssldpca.data, areas)
+    plot.plot_pseudo_labels(ssldpca.data, ssldpca.label, pseudo_labels)
 
 
 
