@@ -141,13 +141,13 @@ class SslDpca1D(object):
         # 需要计算邻居的数据
         test_time_series = to_time_series_dataset(self.data)
         # K邻居的距离和邻居的id
-        distance, neighbors_index = knn_model.kneighbors(test_time_series, return_distance=True)
+        neigh_dist, neigh_ind = knn_model.kneighbors(test_time_series, return_distance=True)
 
         endtime = datetime.datetime.now()
         print('计算邻居用时', (endtime - starttime).seconds)
-        return distance, neighbors_index
+        return neigh_dist, neigh_ind
 
-    def build_density(self, distance, neighbors_index):
+    def build_density(self, neigh_dist, neigh_ind):
         '''
         计算每个数据点的密度
         使用SNN的方式，共享邻居数据点
@@ -160,21 +160,21 @@ class SslDpca1D(object):
         starttime = datetime.datetime.now()
         # 每个数据点的密度
         density = []
-        for index in range(len(distance)):
+        for index in range(len(neigh_dist)):
             # 该数据点的平均邻居距离，去掉第一个点，第一个是本身数据点
-            node_distance_avg = np.mean(distance[index][1:])
+            node_distance_avg = np.mean(neigh_dist[index][1:])
 
             # 数据点的密度
             node_density = 0
 
             # 从一个数据点的邻居内开始计算，neighbor是邻居的ID
-            for neighbor in neighbors_index[index]:
+            for neighbor in neigh_ind[index]:
                 # 求该数据点的邻居与邻居的邻居有多少是重复邻居
-                snn = list(set(neighbors_index[index][1:]).intersection(set(neighbors_index[neighbor][1:])))
+                snn = list(set(neigh_ind[index][1:]).intersection(set(neigh_ind[neighbor][1:])))
                 # 共享邻居的数量
                 snn_num = len(snn)
                 # 邻居数据点的平均距离
-                neighbors_distance_avg = np.mean(distance[neighbor][1:])
+                neighbors_distance_avg = np.mean(neigh_dist[neighbor][1:])
 
                 # 两个数据点的相似度
                 sim = snn_num / (node_distance_avg + neighbors_distance_avg)
@@ -189,7 +189,7 @@ class SslDpca1D(object):
 
         return density
 
-    def build_interval(self, density, distance, label_datas):
+    def build_interval(self, density, neigh_dist, label_datas):
         '''
         计算每个数据点的间隔，基于密度和距离
         :param density: 密度
@@ -199,7 +199,7 @@ class SslDpca1D(object):
         '''
         # 1.首先需要寻找到比数据点密度更高的数据点
         # 2.然后计算dij，i的平均邻居距离，j的平均邻居距离，i到某一个类别有标签样本点的最小平均距离
-        # 3.密度最大值的数据点需要成为最高的间隔值
+        # 3.密度最大值的数据点需要成为最大的间隔值
 
         starttime = datetime.datetime.now()
 
@@ -229,7 +229,7 @@ class SslDpca1D(object):
             # min_label = np.argmin(label_dis)
 
             # node_i的平均邻居距离
-            node_i_distance_avg = np.mean(distance[sort_density_idx[node_i]])
+            node_i_distance_avg = np.mean(neigh_dist[sort_density_idx[node_i]])
 
             # 数据点的全部间隔
             node_intervals = []
@@ -238,7 +238,7 @@ class SslDpca1D(object):
                 # i，j的距离
                 dij = self.euclidean_distance(self.data[sort_density_idx[node_i]], self.data[sort_density_idx[node_j]])
                 # 数据点j的平均邻居距离
-                node_j_distance_avg = np.mean(distance[sort_density_idx[node_j]])
+                node_j_distance_avg = np.mean(neigh_dist[sort_density_idx[node_j]])
                 delta = (dij * (node_i_distance_avg + node_j_distance_avg))/min_label_dis
                 node_intervals.append(delta)
 
@@ -321,8 +321,10 @@ class SslDpca1D(object):
 
     def divide_area(self, density, interval):
         '''
-        为所有的无标签样本点分配标签
-        :return:areas [[core_region], [border_region], [new_category_region]]
+        根据密度与间隔划分区域
+        :param density:
+        :param interval:
+        :return: areas [[core_region], [border_region], [new_category_region]]
         '''
         # 1.在rho和delta的决策图中划分区域
         # 2.把所有的无标签点分配到这些区域
@@ -481,9 +483,9 @@ if __name__ == '__main__':
     # 选出有标签的数据，准备注入
     label_datas = ssldpca.label_data()
     # ssldpca.neighbors_model()
-    distance, neighbors_index = ssldpca.neighbors()
-    density = ssldpca.build_density(distance, neighbors_index)
-    interval = ssldpca.build_interval(density, distance, label_datas)
+    neigh_dist, neigh_ind = ssldpca.neighbors()
+    density = ssldpca.build_density(neigh_dist, neigh_ind)
+    interval = ssldpca.build_interval(density, neigh_dist, label_datas)
     # print(density)
     # print(interval)
     #
