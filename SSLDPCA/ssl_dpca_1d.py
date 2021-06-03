@@ -176,13 +176,12 @@ class SslDpca1D(object):
         print('计算邻居用时', (endtime - starttime).seconds)
         return neigh_dist, neigh_ind
 
-    def divide_type(self, neigh_ind, n_neighbors, param_lambda_low, param_lambda_high):
+    def divide_type(self, neigh_ind, param_lambda_low, param_lambda_high):
         '''
         获得每个点的邻居列表之后即可以为所有的无标签样本划分类型，分为主干点，边界点，噪声点
         :param neigh_ind: 邻居表
         :param param_lambda_low: 噪声点与边界点阈值
         :param param_lambda_high: 边界点和主干点的阈值
-        :param n_neighbors: 邻居数量K
         :return:backbone_point, border_point, noise_point
         主干点，边界点，噪声点的ID值，在data中的index值
         '''
@@ -213,7 +212,8 @@ class SslDpca1D(object):
             # 每个点的平均邻居数
             snn_avg = np.mean(snn_list)
             # 计算r值
-            r = snn_avg / n_neighbors
+            # 这里没有使用self.neighbor_num，因为这个数值+1了
+            r = snn_avg / opt.K
             r_list.append(r)
 
         print('r均值', np.mean(r_list))
@@ -240,6 +240,20 @@ class SslDpca1D(object):
         print('节点划分类型用时', (endtime - starttime).seconds)
 
         return backbone_point, border_point, noise_point
+
+    def del_noise(self, noise_point, neigh_dist, neigh_ind):
+        '''
+        从self.data，也就是原始数据中删除noise_point
+        :param noise_point: 噪声点的idx
+        :return:
+        '''
+        # 从self.data,neigh_dist,neigh_ind中删除noise_point
+        for noise_node in noise_point:
+            del self.data[noise_node]
+            del neigh_dist[noise_node]
+            del neigh_ind[noise_node]
+
+        return neigh_dist, neigh_ind
 
     def build_density(self, neigh_dist, neigh_ind):
         '''
@@ -282,83 +296,6 @@ class SslDpca1D(object):
         print('计算密度用时', (endtime - starttime).seconds)
 
         return density
-
-    # def build_interval(self, density, neigh_dist, label_datas):
-    #     '''
-    #     计算每个数据点的间隔，基于密度和距离
-    #     这个函数计算的间隔值与有标签样本有关
-    #     :param density: 密度
-    #     :param neigh_dist: 邻居之间的距离
-    #     :param label_datas: 注入的有标签的数据
-    #     :return: interval，间隔列表 []
-    #     '''
-    #     # 1.首先需要寻找到比数据点密度更高的数据点
-    #     # 2.然后计算dij，i的平均邻居距离，j的平均邻居距离，i到某一个类别有标签样本点的最小平均距离
-    #     # 3.密度最大值的数据点需要成为最大的间隔值
-    #
-    #     starttime = datetime.datetime.now()
-    #
-    #     # 数据点的间隔值
-    #     interval = []
-    #     # 因为排序过，所以得换一种dict
-    #     interval_dict = {}
-    #
-    #     # 排序，获得排序的ID[]
-    #     sort_density_idx = np.argsort(density)
-    #     # 数据点node的index
-    #     for node_i in range(len(sort_density_idx)):
-    #         # 计算数据点node到有标签样本的平均距离，然后取最小的平均类别距离
-    #         label_dis = []
-    #         # 每个类别的有标签样本
-    #         for category in label_datas:
-    #             category_dis = []
-    #             for i in range(len(category)):
-    #                 # 两点间的距离
-    #                 dis = self.euclidean_distance(self.data[sort_density_idx[node_i]], category[i])
-    #                 category_dis.append(dis)
-    #             # 每个类别的平均距离
-    #             label_dis.append(np.mean(category_dis))
-    #         # 到最近的类别的有标签样本数据的距离
-    #         min_label_dis = np.min(label_dis)
-    #         # 最近的类别
-    #         # min_label = np.argmin(label_dis)
-    #
-    #         # node_i的平均邻居距离
-    #         node_i_distance_avg = np.mean(neigh_dist[sort_density_idx[node_i]])
-    #
-    #         # 数据点的全部间隔
-    #         node_intervals = []
-    #         # 密度比node更大的数据点
-    #         for node_j in range(node_i + 1, len(sort_density_idx)):
-    #             # i，j的距离
-    #             dij = self.euclidean_distance(self.data[sort_density_idx[node_i]], self.data[sort_density_idx[node_j]])
-    #             # 数据点j的平均邻居距离
-    #             node_j_distance_avg = np.mean(neigh_dist[sort_density_idx[node_j]])
-    #             delta = (dij * (node_i_distance_avg + node_j_distance_avg))/min_label_dis
-    #             node_intervals.append(delta)
-    #
-    #         # 添加到interval
-    #         # 判断node_intervals是否为空
-    #         if node_intervals:
-    #             # 不为空就是正常的间隔值
-    #             # 因为排序过，所以不能是直接append，而是要找到位置入座
-    #             interval_dict[sort_density_idx[node_i]] = np.min(node_intervals)
-    #         else:
-    #             # 如果为空，应该是密度最大值，先设置为-1，后面会为他设置为间隔最高值
-    #             interval_dict[sort_density_idx[node_i]] = -1
-    #
-    #     # 密度最高的数据点的间隔必须为间隔最大值
-    #     # 这里用的是dict，所以需要先取出values，然后转换成list，才能使用np.max
-    #     interval_dict[sort_density_idx[-1]] = np.max(list(interval_dict.values()))
-    #
-    #     # 然后将dict按key排序，也就是回到从1-n的原序状态
-    #     # 然后就可以把dict中的value输入到interval
-    #     for key, value in sorted(interval_dict.items()):
-    #         interval.append(value)
-    #
-    #     endtime = datetime.datetime.now()
-    #     print('计算间隔用时', (endtime - starttime).seconds)
-    #     return interval
 
     def build_interval(self, density, neigh_dist):
         '''
@@ -432,31 +369,31 @@ class SslDpca1D(object):
         distance = pdist(X, 'euclidean')[0]
         return distance
 
-    def score(self, density, interval):
+    def build_score(self, density, interval):
         '''
         根据数据点的密度与间隔，计算分数
         :param density: 数据点密度列表 []
         :param interval: 数据点间隔列表 []
-        :return: scores [] 数据点的分数
+        :return: node_scores [] 数据点的分数
         '''
 
         starttime = datetime.datetime.now()
 
-        scores = []
+        node_scores = []
         max_rho = np.max(density)
         max_delta = np.max(interval)
 
         for rho, delta in zip(density, interval):
             # 每个数据点的得分计算
             score = (rho / max_rho) * (delta / max_delta)
-            scores.append(score)
+            node_scores.append(score)
 
         endtime = datetime.datetime.now()
         print('计算得分用时', (endtime - starttime).seconds)
 
-        return scores
+        return node_scores
 
-    def detect_jump_point(self, scores, param_alpha):
+    def detect_jump_point(self, node_scores, param_alpha):
         '''
         动态选择簇头
         f(x, a, k) = akax−(a + 1)
@@ -465,12 +402,12 @@ class SslDpca1D(object):
         主要的流程就是，通过阈值找跳变点，因为score排序过，所以找到跳变的k，k前面的就全部是簇头
         不过没有理解论文中的操作，可能是代码有问题，可能是参数设置的问题，反正这玩意不好用
         最后还是直接设置给定值的类别数
-        :param scores: 数组scores的元素按升序排列
+        :param node_scores: 数组node_score的元素按升序排列
         :param param_alpha: 置信度参数 alpha
         :return: e 跳点e的对应索引
         '''
         # 长度
-        n = len(scores)
+        n = len(node_scores)
         # 返回的簇的数量
         e = -1
         # 阈值
@@ -479,7 +416,7 @@ class SslDpca1D(object):
         # 因为先取反进行降序排序的，所以最后需要取绝对值
         # sorted_scores = abs(np.sort(-np.array(scores)))
         # 论文中需要升序排序
-        sorted_scores = np.sort(np.array(scores))
+        sorted_scores = np.sort(np.array(node_scores))
         for k in range(int(n / 2), n - 3):
             m_a = np.mean(sorted_scores[0:k])
             m_b = np.mean(sorted_scores[k:n])
@@ -506,32 +443,51 @@ class SslDpca1D(object):
                     e = k
         return e
 
-    def assign_labels(self, heads, type_data, label_datas):
+    def select_head(self, node_scores):
+        '''
+        根据每个数据点的分数，选择簇头
+        本来是应该使用跳变点动态选择类别的，不过还是用这个混混吧
+        :param node_scores: 数据点分数
+        :return: 簇节点的ID heads []
+        '''
+        starttime = datetime.datetime.now()
+
+        # 降序排序，需要选取分数最大的作为簇头
+        score_index = np.argsort(-np.array(node_scores))
+        # 有多少个故障类别，就有多少个簇头
+        head_nodes = score_index[:self.category].tolist()
+
+        endtime = datetime.datetime.now()
+        print('计算簇头用时', (endtime - starttime).seconds)
+
+        return head_nodes
+
+    def assign_labels(self, head_nodes, type_point, labeled_data):
         '''
         为无标签样本标注伪标签，也就是对聚类中心，主干点，边界点分别标注标签
         聚类中心：哪个已知类别的真实标签样本与聚类中心的平均距离最近，那么聚类中心的标签就是该已知类的标签
         主干点：主干点分配给距离最近的聚类中心，也就是与聚类中心保持一致
         边界点：边界点与距离他最近的K个主干点的标签值保持一致
-        :param heads: 簇中心点
-        :param type_data: 不同区域的数据ID [[backbone_point],[border_point]]
-        :param label_datas: 有标签样本
+        :param head_nodes: 簇中心点
+        :param type_point: 不同区域的数据ID [[backbone_point],[border_point]]
+        :param labeled_data: 有标签样本
         :return: 样本的伪标签值 []
         '''
         starttime = datetime.datetime.now()
 
         # 主干点
-        backbone_point = type_data[0]
+        backbone_point = type_point[0]
         # 边界点
-        border_point = type_data[1]
+        border_point = type_point[1]
 
         # 簇中心点的标签
         heads_labels = []
         # 簇中心点分配标签的过程
-        for head_node in heads:
+        for head_node in head_nodes:
             # 计算数据点node到有标签样本的平均距离，然后取最小的平均类别距离
             label_dis = []
             # 每个类别的有标签样本
-            for category in label_datas:
+            for category in labeled_data:
                 category_dis = []
                 for i in range(len(category)):
                     # 两点间的距离
@@ -547,7 +503,7 @@ class SslDpca1D(object):
         backbone_labels = []
         for backbone_node in backbone_point:
             head_dis = []
-            for head_node in heads:
+            for head_node in head_nodes:
                 # 主干点与簇中心点的距离
                 dis = self.euclidean_distance(self.data[backbone_node], self.data[head_node])
                 head_dis.append(dis)
@@ -560,9 +516,9 @@ class SslDpca1D(object):
         for border_node in border_point:
             # 计算距离
             border_node_dis = []
-            for core_node in backbone_point:
+            for backbone_node in backbone_point:
                 # 边缘区域中的点与核心区域内点的距离
-                dis = self.euclidean_distance(self.data[border_node], self.data[core_node])
+                dis = self.euclidean_distance(self.data[border_node], self.data[backbone_node])
                 border_node_dis.append(dis)
             # 保存K邻居的标签值
             K_labels = []
@@ -584,7 +540,7 @@ class SslDpca1D(object):
         # 最后需要把标签按顺序摆好，然后输出
         pseudo_labels = []
         # 把几个list合并一下
-        data_index = heads + backbone_point + border_point
+        data_index = head_nodes + backbone_point + border_point
         data_labels = heads_labels + backbone_labels + border_labels
         # 设置一个dict
         pseudo_labels_dict = {}
@@ -602,209 +558,36 @@ class SslDpca1D(object):
 
         return pseudo_labels
 
-
-
-    # def select_head(self, scores):
-    #     '''
-    #     根据每个数据点的分数，选择簇头
-    #     :param scores: 数据点分数
-    #     :return: 簇节点的ID heads []
-    #     '''
-    #     starttime = datetime.datetime.now()
-    #
-    #     # 降序排序，需要选取分数最大的作为簇头
-    #     score_index = np.argsort(-np.array(scores))
-    #     # 有多少个故障类别，就有多少个簇头
-    #     heads = score_index[:self.category].tolist()
-    #
-    #     endtime = datetime.datetime.now()
-    #     print('计算簇头用时', (endtime - starttime).seconds)
-    #
-    #     return heads
-
-    # def divide_area(self, density, interval):
-    #     '''
-    #     根据密度与间隔划分区域
-    #     :param density:
-    #     :param interval:
-    #     :return: areas [[core_region], [border_region], [new_category_region]]
-    #     '''
-    #     # 1.在rho和delta的决策图中划分区域
-    #     # 2.把所有的无标签点分配到这些区域
-    #     # 3.输出每个区域内的数据点ID
-    #
-    #     starttime = datetime.datetime.now()
-    #
-    #     # 密度的分割线，平均密度
-    #     rho_split_line = np.mean(density)
-    #     # 间隔的分割线，lambda*间隔的方差
-    #     delta_split_line = self.lambda_delta * np.var(interval)
-    #
-    #     # 根据分割线划分区域
-    #     # 核心区域
-    #     core_region = []
-    #     # 边缘区域
-    #     border_region = []
-    #     # 新类别区域
-    #     new_category_region = []
-    #     # 数据ID
-    #     index = 0
-    #     for rho, delta in zip(density, interval):
-    #
-    #         if rho >= rho_split_line:
-    #             core_region.append(index)
-    #         elif rho < rho_split_line and delta < delta_split_line:
-    #             border_region.append(index)
-    #         elif rho < rho_split_line and delta >= delta_split_line:
-    #             new_category_region.append(index)
-    #         else:
-    #             print('没这种数据')
-    #
-    #         index = index + 1
-    #
-    #     # 最后输出的三个区域的值
-    #     areas = [core_region, border_region, new_category_region]
-    #
-    #     endtime = datetime.datetime.now()
-    #     print('划分区域用时', (endtime - starttime).seconds)
-    #
-    #     return areas
-
-    # def assign_labels(self, heads, areas, label_datas):
-    #     '''
-    #     在划分完区域之后，开始对每个区域内的数据进行分配伪标签
-    #     :param heads: 簇头的ID []
-    #     :param areas: 每个区域内的数据点ID [[], [], []]
-    #     :param label_datas: 有标签的数据ID [[],[],...,[]]
-    #     :return:pseudo_labels 输出的伪标签
-    #     '''
-    #
-    #     starttime = datetime.datetime.now()
-    #
-    #     # 核心区域
-    #     core_region = areas[0]
-    #     # 边缘区域
-    #     border_region = areas[1]
-    #     # 新类别区域
-    #     new_category_region = areas[2]
-    #
-    #     # 簇中心点的标签
-    #     heads_labels = []
-    #     # 簇中心点分配标签的过程
-    #     for head_node in heads:
-    #         # 计算数据点node到有标签样本的平均距离，然后取最小的平均类别距离
-    #         label_dis = []
-    #         # 每个类别的有标签样本
-    #         for category in label_datas:
-    #             category_dis = []
-    #             for i in range(len(category)):
-    #                 # 两点间的距离
-    #                 dis = self.euclidean_distance(self.data[head_node], category[i])
-    #                 category_dis.append(dis)
-    #             # 每个类别的平均距离
-    #             label_dis.append(np.mean(category_dis))
-    #         # 最近的类别
-    #         min_label = np.argmin(label_dis)
-    #         heads_labels.append(min_label)
-    #
-    #     # 核心区域的标签分配
-    #     core_labels = []
-    #     for core_node in core_region:
-    #         head_dis = []
-    #         for head_node in heads:
-    #             # 核心区域中的点与簇中心点的距离
-    #             dis = self.euclidean_distance(self.data[core_node], self.data[head_node])
-    #             head_dis.append(dis)
-    #         # 核心区域点的标签值与最近的簇中心点保持一致
-    #         core_label = heads_labels[int(np.argmin(head_dis))]
-    #         core_labels.append(core_label)
-    #
-    #     # 边缘区域的标签分配
-    #     border_labels = []
-    #     for border_node in border_region:
-    #         # 计算距离
-    #         border_node_dis = []
-    #         for core_node in core_region:
-    #             # 边缘区域中的点与核心区域内点的距离
-    #             dis = self.euclidean_distance(self.data[border_node], self.data[core_node])
-    #             border_node_dis.append(dis)
-    #         # 保存K邻居的标签值
-    #         K_labels = []
-    #         # 找到距离边缘点最近的核心点
-    #         for i in np.argsort(border_node_dis)[:opt.K]:
-    #             K_labels.append(core_labels[i])
-    #
-    #         # 这里是dict，Counter({3: 2, 10: 2, 1: 1, 0: 1})
-    #         max_K_labels = Counter(K_labels)
-    #         # 按value对dict排序，逆序排序
-    #         max_K_labels = sorted(max_K_labels.items(), key=lambda item: item[1], reverse=True)
-    #         # max_K_labels[0]为最大值，max_K_labels[0][0]为最大值的key
-    #         border_labels.append(max_K_labels[0][0])
-    #
-    #     # 新类别区域的标签分配
-    #     # new_category_labels = []
-    #     new_category_labels = self.new_category_label(new_category_region)
-    #
-    #     # 最后需要把标签按顺序摆好，然后输出
-    #     pseudo_labels = []
-    #     # 把几个list合并一下
-    #     data_index = heads + core_region + border_region + new_category_region
-    #     data_labels = heads_labels + core_labels + border_labels + new_category_labels
-    #     # 设置一个dict
-    #     pseudo_labels_dict = {}
-    #     for i in range(len(data_index)):
-    #         # 给这个dict赋值
-    #         pseudo_labels_dict[data_index[i]] = data_labels[i]
-    #
-    #     # 然后将dict按key排序，也就是回到从1-n的原序状态
-    #     # 然后就可以把dict中的value输入到pseudo_labels
-    #     for key, value in sorted(pseudo_labels_dict.items()):
-    #         pseudo_labels.append(value)
-    #
-    #     endtime = datetime.datetime.now()
-    #     print('分配标签用时', (endtime - starttime).seconds)
-    #
-    #     return pseudo_labels
-    #
-    #
-    # def new_category_label(self, new_category_area):
-    #     '''
-    #     对新类别区域的数据样本点分配标签
-    #     :param new_category_area: 新类别区域的数据
-    #     :return: new_category_labels 新类别区域中样本点的标签
-    #     '''
-    #
-    #     # 这边全部定的是-1
-    #     # 长度就是new_category_area的长度
-    #     new_category_labels = [-1 for _ in range(len(new_category_area))]
-    #
-    #     return new_category_labels
-
-
 if __name__ == '__main__':
     ssldpca = SslDpca1D()
     # 选出有标签的数据，准备注入
-    label_datas = ssldpca.label_data()
+    labeled_data = ssldpca.labeled_data()
+    # 删除有标签数据
+    ssldpca.del_labeled_data()
+    # # 构建邻居模型
     # ssldpca.neighbors_model()
+    # 计算邻居，取得邻居距离和邻居idx
     neigh_dist, neigh_ind = ssldpca.neighbors()
+    # 给所有节点划分类型
+    param_lambda_low = 0.52311
+    para_lambda_high = 0.57111
+    # 三种类型，backbon_point 主干点;border_point 边界点;noise_point 噪声点
+    backbone_point, border_point, noise_point = ssldpca.divide_type(neigh_ind, param_lambda_low, para_lambda_high)
+    # 删除噪声点，self.data,neigh_dist,neigh_ind,都删除
+    neigh_dist, neigh_ind = ssldpca.del_noise(noise_point, neigh_dist, neigh_ind)
+    # 计算密度
     density = ssldpca.build_density(neigh_dist, neigh_ind)
+    # 计算间隔
     interval = ssldpca.build_interval(density, neigh_dist)
-    # print(density)
-    # print(interval)
-    #
-    scores = ssldpca.score(density, interval)
-    heads = ssldpca.select_head(scores)
-    #
-    areas = ssldpca.divide_area(density, interval)
-    # print(areas)
-    #
-    pseudo_labels = ssldpca.assign_labels(heads, areas, label_datas)
+
+    # 计算节点分数
+    node_scores = ssldpca.build_score(density, interval)
+    head_nodes = ssldpca.select_head(node_scores)
+
+    # 获取数据的伪标签
+    pseudo_labels = ssldpca.assign_labels(head_nodes, [backbone_point, border_point], labeled_data)
     # print(pseudo_labels)
 
-    plot = Plot()
-    # plot.plot_data(ssldpca.data, ssldpca.label)
-    plot.plot_areas(ssldpca.data, areas)
-    plot.plot_pseudo_labels(ssldpca.data, ssldpca.label, pseudo_labels)
 
 
 
