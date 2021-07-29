@@ -54,7 +54,7 @@ class ToyDataset():
         '''
         X = []
         y = []
-        file_path = '../data/Jain.txt'
+        file_path = '../data/toy_data/Jain.txt'
         with open(file_path, 'r') as f:
             lines = f.readlines()
 
@@ -72,7 +72,7 @@ class ToyDataset():
         '''
         X = []
         y = []
-        file_path = '../data/Pathbased.txt'
+        file_path = '../data/toy_data/Pathbased.txt'
         with open(file_path, 'r') as f:
             lines = f.readlines()
 
@@ -92,15 +92,15 @@ class ToyDataset():
         X = []
         # y = []
         if type == 'DS4':
-            file_path = '../data/t4.8k.dat'
+            file_path = '../data/toy_data/t4.8k.dat'
         elif type == 'DS5':
-            file_path = '../data/t5.8k.dat'
+            file_path = '../data/toy_data/t5.8k.dat'
         elif type == 'DS7':
-            file_path = '../data/t7.10k.dat'
+            file_path = '../data/toy_data/t7.10k.dat'
         elif type == 'DS8':
-            file_path = '../data/t8.8k.dat'
+            file_path = '../data/toy_data/t8.8k.dat'
         else:
-            file_path = '../data/t4.8k.dat'
+            file_path = '../data/toy_data/t4.8k.dat'
 
         with open(file_path, 'r') as f:
             lines = f.readlines()
@@ -322,7 +322,7 @@ class ToyDataset():
         for k in range(int(n/2), n-3):
             m_a = np.mean(sorted_scores[0:k])
             m_b = np.mean(sorted_scores[k:n])
-            if m_a < param_alpha * m_b:
+            if m_a <= param_alpha * m_b:
                 # a的参数，shape就是k，scale就是a
                 shape_a = sorted_scores[0]
                 sum_a = 0
@@ -530,6 +530,8 @@ if __name__ == '__main__':
     # toy.plot_scores(scores)
 
     # 自动获取聚类中心
+    # 在论文SAND中的alpha为0.05.这里的alpha为SAND中的1-alpha，所以设置为0.95
+
     param_alpha = 0.95
     k = toy.detect_jump_point(scores, param_alpha)
 

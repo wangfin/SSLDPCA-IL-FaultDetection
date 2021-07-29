@@ -280,6 +280,18 @@ class DataProcess(object):
         file.create_dataset("label", np.shape(labels), dtype='uint8', data=labels)
         file.close()
 
+    '''
+        考虑下也导入田纳西-伊斯曼Tennessee Eastman(TE过程)的数据
+        TE过程有21个故障，也就是21个dat文件（21个训练，21个测试）
+        有53个变量，41个+12个
+    '''
+    def TE_data_1d(self):
+        '''
+        1D的TE过程数据处理
+        :return:
+        '''
+
+
 
 if __name__ == '__main__':
     data = DataProcess()

@@ -67,7 +67,8 @@ class SslDpca1D(object):
         # 有标签数据的占比
         self.label_fraction = opt.label_fraction
         # 有标签数据保存的文件
-        self.labeled_data_file = 'labeled_data.npy'
+        self.labeled_data_file = './labeled_data.npy'
+        self.label_file = './label.npy'
         # 故障的类别
         self.category = opt.CWRU_category
         # 邻居数量，因为计算的K邻居的第一个是自己，所以需要+1
@@ -77,44 +78,61 @@ class SslDpca1D(object):
         # K邻居模型保存路径
         self.K_neighbor = './K-neighbor_mini.h5'
 
-    def labeled_data(self):
+    def make_labeled_data(self):
         '''
         处理有标签的数据，选择其中的一部分作为标签数据输入算法，其他数据的标签全部清除
         这里选择数据是随机选择的
         所以每次运行此函数得到的有标签样本是变化的
         考虑保存选出的数据，因为原始数据中需要删除这一部分的数据
-        :return: labeled_data，每个类别的有标签的数据集合 [[],[],...,[]]
+        :return: labeled_datas，每个类别的有标签的数据集合 [[],[],...,[]]
         '''
         # 选取一定比例的有标签数据（这个是仿真中可以调整的参数）
         # 为了实验起见，选取平衡的数据，即每个类分配相同比例的有标签数据集
         # (33693,400)(33693)
         # 各个类别的数据
         category_data = []
+        # 各个类别的标签
+        category_label = []
         # 有标签的数据
-        labeled_data = []
+        labeled_datas = []
+        # 有标签的标签
+        labels = []
 
         # 把每个类别的数据切分出来
         point = 0
         for i in range(len(self.data_num)):
             data = self.data[point:point + self.data_num[i]]
-            point = point + self.data_num[i]
+            label = self.label[point:point + self.data_num[i]]
+
             category_data.append(data)
+            category_label.append(label)
+
+            point = point + self.data_num[i]
 
         # 选出有标签的index
-        for category in tqdm(category_data):
+        for data, label in tqdm(zip(category_data, category_label)):
             # 有标签的数量
-            label_num = int(len(category) * self.label_fraction)
+            label_data_num = int(len(data) * self.label_fraction)
             # 对category的格式为(609,400)
             # 随机从数据中取出需要数量的值，需要先转换为list
-            label_data = random.sample(category.tolist(), label_num)
+            data_ = random.sample(data.tolist(), label_data_num)
+            label_ = random.sample(label.tolist(), label_data_num)
+
+            # label_data为list，每个list是(400,)的数据
             # 再把list转换为ndarray
-            labeled_data.append(np.array(label_data))
+            labeled_datas.append(np.array(data_))
+            # labeled_data为list，list中为[(121,400),(xxx,400)...]
+            labels.append(np.array(label_))
 
-        # 保存有标签数据，看到numpy可以保存数据，这边试一试
-        # 但是保存完成之后，就从原先的list转换成ndarray
-        np.save(self.labeled_data_file, labeled_data)
+        # # 保存为h5文件
+        # f = h5py.File(self.labeled_data_file, 'w')  # 创建一个h5文件，文件指针是f
+        # f['labeled_data'] = np.array(labeled_data)  # 将数据写入文件的主键data下面
+        # f.close()  # 关闭文件
 
-        return labeled_data
+        # 使用np的保存，不过保存下来是ndarray
+        np.save(self.labeled_data_file, labeled_datas)
+        np.save(self.label_file, labels)
+        return labeled_datas
 
     def del_labeled_data(self):
         '''
@@ -122,13 +140,23 @@ class SslDpca1D(object):
         :return:
         '''
         # 从文件中读取保存好的有标签的样本
-        labeled_data = np.load(self.labeled_data_file)
+        # 读取出来是ndarray，需要转换成list
+        labeled_datas = np.load(self.labeled_data_file, allow_pickle=True).tolist()
+        labels = np.load(self.label_file, allow_pickle=True).tolist()
+        # 为了从self.data中删除元素，需要先把ndarray转换为list
+        data_list = self.data.tolist()
+        label_list = self.label.tolist()
         # 读取每个类别的有标签样本
-        for category in labeled_data:
+        for data, label in zip(labeled_datas, labels):
             # 遍历
-            for category_data in category:
+            for category_data, category_label in zip(data, label):
                 # 根据样本值从原始数据中删除样本
-                self.data.remove(category_data)
+                # 使用np的ndarray删除
+                data_list.remove(category_data.tolist())
+                label_list.remove(category_label.tolist())
+        # 最后还得把data转化为ndarray
+        self.data = np.array(data_list)
+        self.label = np.array(label_list)
 
     def neighbors_model(self):
         '''
@@ -249,9 +277,11 @@ class SslDpca1D(object):
         '''
         # 从self.data,neigh_dist,neigh_ind中删除noise_point
         for noise_node in noise_point:
-            del self.data[noise_node]
-            del neigh_dist[noise_node]
-            del neigh_ind[noise_node]
+            # np 删除行
+            np.delete(self.data, noise_node, axis=0)
+            # python list 删除，使用pop
+            neigh_dist.pop(noise_node)
+            neigh_ind.pop(noise_node)
 
         return neigh_dist, neigh_ind
 
@@ -560,33 +590,39 @@ class SslDpca1D(object):
 
 if __name__ == '__main__':
     ssldpca = SslDpca1D()
-    # 选出有标签的数据，准备注入
-    labeled_data = ssldpca.labeled_data()
-    # 删除有标签数据
-    ssldpca.del_labeled_data()
-    # # 构建邻居模型
-    # ssldpca.neighbors_model()
-    # 计算邻居，取得邻居距离和邻居idx
-    neigh_dist, neigh_ind = ssldpca.neighbors()
-    # 给所有节点划分类型
-    param_lambda_low = 0.52311
-    para_lambda_high = 0.57111
-    # 三种类型，backbon_point 主干点;border_point 边界点;noise_point 噪声点
-    backbone_point, border_point, noise_point = ssldpca.divide_type(neigh_ind, param_lambda_low, para_lambda_high)
-    # 删除噪声点，self.data,neigh_dist,neigh_ind,都删除
-    neigh_dist, neigh_ind = ssldpca.del_noise(noise_point, neigh_dist, neigh_ind)
-    # 计算密度
-    density = ssldpca.build_density(neigh_dist, neigh_ind)
-    # 计算间隔
-    interval = ssldpca.build_interval(density, neigh_dist)
 
-    # 计算节点分数
-    node_scores = ssldpca.build_score(density, interval)
-    head_nodes = ssldpca.select_head(node_scores)
-
-    # 获取数据的伪标签
-    pseudo_labels = ssldpca.assign_labels(head_nodes, [backbone_point, border_point], labeled_data)
-    # print(pseudo_labels)
+    # 绘制原始数据的t-sne图
+    plot = Plot()
+    plot.plot_data(ssldpca.data, ssldpca.label)
+    # # 选出有标签的数据，准备注入
+    # labeled_data = ssldpca.make_labeled_data()
+    # # 删除有标签数据
+    # ssldpca.del_labeled_data()
+    # # # 构建邻居模型
+    # # ssldpca.neighbors_model()
+    # # 计算邻居，取得邻居距离和邻居idx
+    # neigh_dist, neigh_ind = ssldpca.neighbors()
+    # # 给所有节点划分类型
+    # param_lambda_low = 0.52311
+    # para_lambda_high = 0.57111
+    # # 三种类型，backbon_point 主干点;border_point 边界点;noise_point 噪声点
+    # backbone_point, border_point, noise_point = ssldpca.divide_type(neigh_ind, param_lambda_low, para_lambda_high)
+    # print(len(backbone_point), len(border_point), len(noise_point))
+    #
+    # # 删除噪声点，self.data,neigh_dist,neigh_ind,都删除
+    # neigh_dist, neigh_ind = ssldpca.del_noise(noise_point, neigh_dist, neigh_ind)
+    # # 计算密度
+    # density = ssldpca.build_density(neigh_dist, neigh_ind)
+    # # 计算间隔
+    # interval = ssldpca.build_interval(density, neigh_dist)
+    #
+    # # 计算节点分数
+    # node_scores = ssldpca.build_score(density, interval)
+    # head_nodes = ssldpca.select_head(node_scores)
+    #
+    # # 获取数据的伪标签
+    # pseudo_labels = ssldpca.assign_labels(head_nodes, [backbone_point, border_point], labeled_data)
+    # # print(pseudo_labels)
 
 
 

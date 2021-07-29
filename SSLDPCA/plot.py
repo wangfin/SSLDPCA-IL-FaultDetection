@@ -20,7 +20,11 @@ class Plot(object):
 
         # 点图采用T-SNE
 
-        X_tsne = TSNE(n_components=2, random_state=0).fit_transform(data, label)
+        X_tsne = TSNE(n_components=2,
+                      perplexity=20.0,
+                      early_exaggeration=12.0,
+                      learning_rate=300.0,
+                      init='pca').fit_transform(data, label)
 
         ckpt_dir = "images"
         if not os.path.exists(ckpt_dir):
@@ -28,7 +32,7 @@ class Plot(object):
 
         plt.scatter(X_tsne[:, 0], X_tsne[:, 1], c=label, cmap='Spectral', label=label)
 
-        plt.savefig('images/data.png', dpi=600)
+        # plt.savefig('images/data.png', dpi=600)
         plt.show()
 
     def plot_areas(self, data, areas):
