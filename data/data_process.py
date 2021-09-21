@@ -45,11 +45,12 @@ class DataProcess(object):
         dim = opt.CWRU_dim
         # CWRU原始数据
         CWRU_data_path = opt.CWRU_data_root
+        read_file_directory = opt.read_file_directory
         # 一维数据保存路径
         save_path = opt.CWRU_data_1d_root
 
         # 读取文件列表
-        frame_name = os.path.join(CWRU_data_path, 'annotations_mini.txt')
+        frame_name = os.path.join(CWRU_data_path, read_file_directory)
         frame = pd.read_table(frame_name)
 
         # 数据
@@ -92,7 +93,7 @@ class DataProcess(object):
         print(signals_np.shape, labels_np.shape, data_num_np.shape)
 
         # 保存为h5的文件
-        file_name = os.path.join(save_path, 'CWRU_mini_' + type + '.h5')
+        file_name = os.path.join(save_path, 'CWRU_mini_0_' + type + '.h5')
         f = h5py.File(file_name, 'w')
         # 数据
         f.create_dataset('data', data=signals_np)

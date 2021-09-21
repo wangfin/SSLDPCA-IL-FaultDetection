@@ -19,6 +19,7 @@ class DefaultConfig(object):
     load_model_path = None  # 加载预训练的模型的路径，为None代表不加载
 
     CWRU_data_root = './CWRU_data'  # CWRU的数据列表
+    read_file_directory = 'annotations_mini.txt'  # 读取文件的目录，也就是从CWRU数据集中读取哪些数据
     CWRU_data_1d_root = './CWRU_data_1d'  # CWRU数据1d的保存路径，h5文件
     CWRU_data_2d_root = './CWRU_data_2d'  # CWRU数据2d的根目录保存路径
 

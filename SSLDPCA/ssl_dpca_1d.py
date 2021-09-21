@@ -51,7 +51,7 @@ class SslDpca1D(object):
         设定一些全局变量作为参数
         '''
         # h5文件路径
-        file_path = '../data/CWRU_data_1d/CWRU_mini_DE.h5'
+        file_path = '../data/CWRU_data_1d/CWRU_mini_0_DE.h5'
         # 读取数据
         f = h5py.File(file_path, 'r')
         # 数据，取值，可以用f['data'].value，不过包自己推荐使用f['data'][()]这种方式
@@ -589,11 +589,13 @@ class SslDpca1D(object):
         return pseudo_labels
 
 if __name__ == '__main__':
-    ssldpca = SslDpca1D()
+    a, b = c = 2+2, "Fiberhome"
+    print(a, b, c)
+    # ssldpca = SslDpca1D()
 
     # 绘制原始数据的t-sne图
-    plot = Plot()
-    plot.plot_data(ssldpca.data, ssldpca.label)
+    # plot = Plot()
+    # plot.plot_data(ssldpca.data, ssldpca.label)
     # # 选出有标签的数据，准备注入
     # labeled_data = ssldpca.make_labeled_data()
     # # 删除有标签数据
