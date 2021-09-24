@@ -8,6 +8,7 @@ from sklearn.manifold import TSNE
 import os
 import itertools
 import numpy as np
+import openpyxl
 
 '''
 绘制图形
@@ -83,7 +84,7 @@ class Plot(object):
         plt.show()
 
     # 绘制混淆矩阵
-    def plot_confusion_matrix(self, cm, classes, normalize=False, title='Confusion matrix', cmap=plt.cm.Blues):
+    def plot_confusion_matrix(self, cm, normalize=False, map='Reds'):
         """
         This function prints and plots the confusion matrix.
         Normalization can be applied by setting `normalize=True`.
@@ -91,43 +92,61 @@ class Plot(object):
         - cm : 计算出的混淆矩阵的值
         - classes : 混淆矩阵中每一行每一列对应的列
         - normalize : True:显示百分比, False:显示个数
+        - map :Blues, Greens, Reds
         """
+        plt.rcParams['savefig.dpi'] = 300  # 图片像素
+        plt.rcParams['figure.dpi'] = 300  # 分辨率
+        plt.rcParams["image.cmap"] = map
+        plt.rcParams["savefig.bbox"] = 'tight'
+        plt.rcParams["savefig.pad_inches"] = 0.2
+
         if normalize:
             cm = cm.astype('float') / cm.sum(axis=1)[:, np.newaxis]
             print("Normalized confusion matrix")
         else:
             print('Confusion matrix, without normalization')
         print(cm)
-        plt.imshow(cm, interpolation='nearest', cmap=cmap)
-        plt.title(title)
-        plt.colorbar()
+        plt.imshow(cm, interpolation='nearest')
+        # plt.title(title)
+        # plt.colorbar()
+        classes = ['NC', 'IF-1', 'OF-1', 'BF-1', 'IF-2', 'OF-2', 'BF-2', 'IF-3', 'OF-3', 'BF-3']
         tick_marks = np.arange(len(classes))
         plt.xticks(tick_marks, classes, rotation=45)
         plt.yticks(tick_marks, classes)
-        fmt = '.2f' if normalize else 'd'
+        fmt = '.1f' # if normalize else 'd'
         thresh = cm.max() / 2.
         for i, j in itertools.product(range(cm.shape[0]), range(cm.shape[1])):
             plt.text(j, i, format(cm[i, j], fmt),
                      horizontalalignment="center",
-                     color="white" if cm[i, j] > thresh else "black")
+                     color="white" if cm[i, j] > thresh else "black",
+                     fontsize=9)
         plt.tight_layout()
         plt.ylabel('True label')
         plt.xlabel('Predicted label')
-        plt.show()
+        plt.savefig('../pic/con-C.png', transparent=True)
+        # plt.show()
+
+    def excel2matrix(self, path, sheet=2):
+        '''
+        读入excel数据，转换为矩阵
+        :param path:
+        :param sheet:1
+        :return:
+        '''
+        data = openpyxl.load_workbook(path)
+        table = data.worksheets[sheet]
+        data = []
+        for row in table.iter_rows(min_col=1, max_col=10, min_row=2, max_row=11):
+            data.append([cell.value for cell in row])
+
+        datamatrix = np.array(data)
+        return datamatrix
+
 
 if __name__ == '__main__':
-    cnf_matrix = np.array([[8707, 64, 731, 164, 45],
-                           [1821, 5530, 79, 0, 28],
-                           [266, 167, 1982, 4, 2],
-                           [691, 0, 107, 1930, 26],
-                           [30, 0, 111, 17, 42]])
-    attack_types = ['Normal', 'DoS', 'Probe', 'R2L', 'U2R']
     plot = Plot()
-    plot.plot_confusion_matrix(cm=cnf_matrix, classes=attack_types, normalize=True, title='Normalized confusion matrix')
+    cnf_matrix = plot.excel2matrix(path='../data/matrix.xlsx')
+    plot.plot_confusion_matrix(cm=cnf_matrix)
 
-    # np.random.seed(123456789)
-    # data = np.random.rand(25).reshape(5, 5)
-    # plt.imshow(data)
-    # plt.show()
 
 
