@@ -84,12 +84,13 @@ class Plot(object):
         plt.show()
 
     # 绘制混淆矩阵
-    def plot_confusion_matrix(self, cm, normalize=False, map='Reds'):
+    def plot_confusion_matrix(self, cm, save_fig, normalize=False, map='Blues'):
         """
         This function prints and plots the confusion matrix.
         Normalization can be applied by setting `normalize=True`.
         Input
         - cm : 计算出的混淆矩阵的值
+        - save_fig : 想要把图片保存在哪个位置
         - classes : 混淆矩阵中每一行每一列对应的列
         - normalize : True:显示百分比, False:显示个数
         - map :Blues, Greens, Reds
@@ -123,10 +124,10 @@ class Plot(object):
         plt.tight_layout()
         plt.ylabel('True label')
         plt.xlabel('Predicted label')
-        plt.savefig('../pic/con-C.png', transparent=True)
+        plt.savefig(save_fig, transparent=True)
         # plt.show()
 
-    def excel2matrix(self, path, sheet=2):
+    def excel2matrix(self, path, sheet=4):
         '''
         读入excel数据，转换为矩阵
         :param path:
@@ -146,7 +147,8 @@ class Plot(object):
 if __name__ == '__main__':
     plot = Plot()
     cnf_matrix = plot.excel2matrix(path='../data/matrix.xlsx')
-    plot.plot_confusion_matrix(cm=cnf_matrix)
+    save_fig = '../pic/E.png'
+    plot.plot_confusion_matrix(cm=cnf_matrix, save_fig=save_fig)
 
 
 

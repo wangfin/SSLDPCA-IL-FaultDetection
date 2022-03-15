@@ -16,7 +16,7 @@ import models
 from config import opt
 from utils.visualize import Visualizer
 from data.dataset import CWRUDataset2D
-from SSLDPCA.ssl_dpca_1d import ssldpca
+from SSLDPCA.ssl_dpca_1d import SslDpca1D
 from SSLDPCA.plot import Plot
 
 
