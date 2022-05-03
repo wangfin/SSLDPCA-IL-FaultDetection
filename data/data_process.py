@@ -89,11 +89,11 @@ class DataProcess(object):
         signals_np = np.concatenate(signals).squeeze()
         # (33693,)
         labels_np = np.concatenate(np.array(labels)).astype('uint8')
-        data_num_np = np.array(data_num).astype('uint16')
+        data_num_np = np.array(data_num).astype('uint8')
         print(signals_np.shape, labels_np.shape, data_num_np.shape)
 
         # 保存为h5的文件
-        file_name = os.path.join(save_path, 'CWRU_mini_0_' + type + '.h5')
+        file_name = os.path.join(save_path, 'CWRU_mini_' + type + str(len(frame)) + '.h5')
         f = h5py.File(file_name, 'w')
         # 数据
         f.create_dataset('data', data=signals_np)
@@ -181,6 +181,7 @@ class DataProcess(object):
                         # plt.savefig("GramianAngularField.pdf", pad_inches=0)
                         # plt.show()
 
+    # 此函数未完成
     def CWRU_data_2d_transform(self, type='DE'):
         '''
         使用数据拼接的方式，将一个长的时序数据拆分成小段，将小段按按行拼接
@@ -286,6 +287,7 @@ class DataProcess(object):
         TE过程有21个故障，也就是21个dat文件（21个训练，21个测试）
         有53个变量，41个+12个
     '''
+    # 此函数未完成
     def TE_data_1d(self):
         '''
         1D的TE过程数据处理

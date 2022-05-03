@@ -14,7 +14,7 @@ from scipy.spatial.distance import pdist
 from collections import Counter
 
 from config import opt
-from SSLDPCA.plot import Plot
+from utils import plot
 
 '''
 半监督（SSL）的密度峰值聚类（DPCA），此文件用于1d数据
@@ -589,13 +589,11 @@ class SslDpca1D(object):
         return pseudo_labels
 
 if __name__ == '__main__':
-    a, b = c = 2+2, "Fiberhome"
-    print(a, b, c)
-    # ssldpca = SslDpca1D()
+    ssldpca = SslDpca1D()
 
     # 绘制原始数据的t-sne图
-    # plot = Plot()
-    # plot.plot_data(ssldpca.data, ssldpca.label)
+    plot = plot.Plot()
+    plot.plot_data(ssldpca.data, ssldpca.label)
     # # 选出有标签的数据，准备注入
     # labeled_data = ssldpca.make_labeled_data()
     # # 删除有标签数据

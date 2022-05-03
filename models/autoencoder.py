@@ -1,16 +1,12 @@
-#!/usr/bin/env python
-# @Time    : 2020/7/8 15:47
-# @Author  : wb
-# @File    : cnn1d.py
-
+# !/usr/bin/env python
+# -*-coding:utf-8 -*-
+'''
+# Time       ：2022/3/15 16:42
+# Author     ：wb
+# File       : autoencoder.py
+'''
 from torch import nn
-import torchsnooper
 from .basic_module import BasicModule
-
-'''
-1D的CNN，用于处理1d的时序信号
-可以用于构建基础的故障诊断（分类）模块
-'''
 
 class Flatten(nn.Module):
     '''
@@ -23,17 +19,17 @@ class Flatten(nn.Module):
     def forward(self, x):
         return x.view(x.size(0), -1)
 
-
-class cnn1d(BasicModule):
+# 自动编码器
+class autoencoder(BasicModule):
     '''
-    1dCNN，用于处理时序信号
+    自动编码器
     '''
-
     def __init__(self, kernel1=27, kernel2=36, kernel_size=10, pad=0, ms1=4, ms2=4):
-        super(cnn1d, self).__init__()
-        self.model_name = 'cnn1d'
+        super(autoencoder, self).__init__()
+        self.model_name = 'autoencoder'
 
         # 输入 [batch size, channels, length] [N, 1, L]
+        # 编码器 卷积层
         self.conv = nn.Sequential(
             nn.Conv1d(1, kernel1, kernel_size, padding=pad),
             nn.BatchNorm1d(kernel1),
@@ -47,22 +43,34 @@ class cnn1d(BasicModule):
             nn.BatchNorm1d(kernel2),
             nn.ReLU(),
             nn.MaxPool1d(ms2),
-            nn.Dropout(),
             nn.Conv1d(kernel2, kernel2, kernel_size, padding=pad),
             nn.BatchNorm1d(kernel2),
             nn.ReLU(),
-            Flatten()
+            nn.Dropout(),
         )
 
-        self.fc = nn.Sequential(
-            nn.Linear(360, 180),
+        # 解码器 反卷积
+        self.transconv = nn.Sequential(
+            nn.ConvTranspose1d(kernel2, kernel2, kernel_size, padding=pad),
+            nn.BatchNorm1d(kernel2),
             nn.ReLU(),
-            nn.Linear(180, 90),
+            nn.MaxUnpool1d(ms2),
+            nn.ConvTranspose1d(kernel2, kernel1, kernel_size, padding=pad),
+            nn.BatchNorm1d(kernel1),
             nn.ReLU(),
-            nn.Linear(90, 10),
+            nn.Dropout(),
+            nn.ConvTranspose1d(kernel1, kernel1, kernel_size, padding=pad),
+            nn.BatchNorm1d(kernel1),
+            nn.ReLU(),
+            nn.MaxUnpool1d(ms1),
+            nn.ConvTranspose1d(kernel1, 1, kernel_size, padding=pad),
+            nn.ReLU(),
+            nn.Dropout(),
         )
 
     def forward(self, x):
         x = self.conv(x)
-        x = self.fc(x)
+        x = self.transconv(x)
         return x
+
+

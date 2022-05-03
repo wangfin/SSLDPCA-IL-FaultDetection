@@ -28,7 +28,7 @@ class Plot(object):
                       learning_rate=300.0,
                       init='pca').fit_transform(data, label)
 
-        ckpt_dir = "images"
+        ckpt_dir = "../SSLDPCA/images"
         if not os.path.exists(ckpt_dir):
             os.makedirs(ckpt_dir)
 
@@ -146,9 +146,12 @@ class Plot(object):
 
 if __name__ == '__main__':
     plot = Plot()
-    cnf_matrix = plot.excel2matrix(path='../data/matrix.xlsx')
-    save_fig = '../pic/E.png'
-    plot.plot_confusion_matrix(cm=cnf_matrix, save_fig=save_fig)
+    plot.plot_data()
+    # cnf_matrix = plot.excel2matrix(path='../data/matrix.xlsx')
+    # save_fig = '../pic/E.png'
+    # plot.plot_confusion_matrix(cm=cnf_matrix, save_fig=save_fig)
+
+
 
 
 

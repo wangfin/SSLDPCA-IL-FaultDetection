@@ -15,9 +15,7 @@ import os
 import models
 from config import opt
 from utils.visualize import Visualizer
-from data.dataset import CWRUDataset2D
-from SSLDPCA.ssl_dpca_1d import SslDpca1D
-from SSLDPCA.plot import Plot
+from data.dataset import CWRUDataset1D, CWRUDataset2D
 
 
 def train(**kwargs):
@@ -29,7 +27,7 @@ def train(**kwargs):
 
     # 根据命令行参数更新配置
     opt.parse(kwargs)
-    # visdom绘图程序
+    # visdom绘图程序，需要启动visdom服务器
     vis = Visualizer(opt.env, port=opt.vis_port)
 
     # step:1 构建模型
@@ -37,17 +35,19 @@ def train(**kwargs):
     model = getattr(models, opt.model)()
     # 是否读取保存好的模型参数
     if opt.load_model_path:
-        model.load(opt.load_model_path)
+        model = model.load(opt.load_model_path)
 
     # 设置GPU
-    os.environ["CUDA_VISIBLE_DEVICES"] = "2"
-    model.to(opt.device)
+    if torch.cuda.is_available():
+        os.environ["CUDA_VISIBLE_DEVICES"] = "0"
+        model = model.to(opt.device)
 
     # step2: 数据
-    train_data = CWRUDataset2D(opt.train_data_root, train=True)
+    train_data = CWRUDataset1D(opt.train_data_root, train=True)
     # 测试数据集和验证数据集是一样的，这些数据是没有用于训练的
-    test_data = CWRUDataset2D(opt.train_data_root, train=False)
+    test_data = CWRUDataset1D(opt.train_data_root, train=False)
 
+    # 使用DataLoader一条一条读取数据
     train_dataloader = DataLoader(train_data, opt.batch_size, shuffle=True)
     test_dataloader = DataLoader(test_data, opt.batch_size, shuffle=False)
 
@@ -57,12 +57,14 @@ def train(**kwargs):
     lr = opt.lr
     # 优化函数，Adam
     optimizer = torch.optim.Adam(model.parameters(), lr=lr, weight_decay=opt.weight_decay)
+    scheduler = torch.optim.lr_scheduler.StepLR(optimizer, opt.lr_decay_iters,
+                                                opt.lr_decay)  # regulation rate decay
 
     # step4: 统计指标，平滑处理之后的损失，还有混淆矩阵
     # 损失进行取平均及方差计算。
     loss_meter = meter.AverageValueMeter()
     # 混淆矩阵
-    confusion_matrix = meter.ConfusionMeter(opt.category)
+    confusion_matrix = meter.ConfusionMeter(opt.CWRU_category)
     previous_loss = 1e10
 
     # 训练
@@ -73,16 +75,27 @@ def train(**kwargs):
         confusion_matrix.reset()
 
         for ii, (data, label) in tqdm(enumerate(train_dataloader)):
+            # print('data', data)
+            # print('label', label)
 
+            # 改变形状
+            data.resize_(data.size()[0], 1, data.size()[1])
             # 训练模型
-            input = data.to(opt.device)
-            target = label.to(opt.device)
+            # 转换成float
+            input = data.type(torch.FloatTensor).to(opt.device)
+            target = label.type(torch.LongTensor).to(opt.device)
 
             optimizer.zero_grad()
             score = model(input)
+            # 计算loss
             loss = criterion(score, target)
+
             loss.backward()
+            # 优化参数
             optimizer.step()
+            # 修改学习率
+            scheduler.step()
+
 
             # 更新统计指标以及可视化
             loss_meter.add(loss.item())
@@ -90,7 +103,10 @@ def train(**kwargs):
             confusion_matrix.add(score.detach(), target.detach())
 
             if (ii + 1) % opt.print_freq == 0:
+                # vis绘图
                 vis.plot('loss', loss_meter.value()[0])
+                # 打印出信息
+                print('t = %d, loss = %.4f' % (ii + 1, loss.item()))
 
                 # 进入debug模式
                 if os.path.exists(opt.debug_file):
@@ -123,11 +139,17 @@ def val(model, dataloader):
     """
     # pytorch会自动把BN和DropOut固定住，不会取平均，而是用训练好的值
     model.eval()
-    confusion_matrix = meter.ConfusionMeter(opt.category)
-    for ii, (test_input, label) in tqdm(enumerate(dataloader)):
-        test_input = test_input.to(opt.device)
+    confusion_matrix = meter.ConfusionMeter(opt.CWRU_category)
+    for ii, (data, label) in tqdm(enumerate(dataloader)):
+        # 改变形状
+        data.resize_(data.size()[0], 1, data.size()[1])
+        # 训练模型
+        # 转换成float
+        test_input = data.type(torch.FloatTensor).to(opt.device)
+        target = label.type(torch.LongTensor).to(opt.device)
+
         score = model(test_input)
-        confusion_matrix.add(score.detach().squeeze(), label.type(torch.LongTensor))
+        confusion_matrix.add(score.detach(), target)
 
     model.train()
     cm_value = confusion_matrix.value()
@@ -190,7 +212,7 @@ def help():
 
     from inspect import getsource
     source = (getsource(opt.__class__))
-    print(source)
+    # print(source)
 
 if __name__ == '__main__':
     train()

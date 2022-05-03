@@ -31,10 +31,10 @@ class BasicModule(torch.nn.Module):
         保存模型，默认使用“模型名字+时间”作为文件名
         '''
         if name is None:
-            prefix = 'checkpoints/' + self.model_name + '_'
+            prefix = './models/checkpoints/' + self.model_name + '_'
             name = time.strftime(prefix + '%m%d_%H_%M_%S.pth')
         else:
-            prefix = 'checkpoints/' + name + '_'
+            prefix = './models/checkpoints/' + name + '_'
             name = time.strftime(prefix + '%m%d_%H_%M_%S.pth')
         torch.save(self.state_dict(), name)
         return name
